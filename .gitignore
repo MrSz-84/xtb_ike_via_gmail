@@ -1,5 +1,6 @@
-config/api_oath.json
+config/api_oaoth.json
 config/gmail_token.json
 config/docs.json
+config/token.json
 config/__pycache__
 venv
