@@ -1,4 +1,5 @@
 import os.path
+import base64
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -48,19 +49,31 @@ def main():
             subject = next((header['value'] for header in headers if header['name'] == 'Subject'), 'Brak tematu')
             date = next((header['value'] for header in headers if header['name'] == 'Date'), 'Brak daty')
             
-            attachments = 'Brak załączników'
+            attachments = []
             if 'parts' in msg['payload']:
-                attachments = [part['filename'] for part in msg['payload']['parts']]
-                attachments = attachments if attachments else 'Brak załączników'
+                for part in msg['payload']['parts']:
+                    if 'filename' in part and part['filename']:
+                        if 'body' in part and 'attachmentId' in part['body']:
+                            attachment = service.users().messages().attachments().get(
+                                userId='me', messageId=message['id'], id=part['body']['attachmentId']
+                            ).execute()
+                            file_data = attachment['data']
+                            file_name = part['filename']
+                            file_bytes = base64.urlsafe_b64decode(file_data)
+                            attachments.append(file_name)
+                            attachments.append(file_bytes)
+                            
+                            
+
             
-            snippet = msg.get('snippet', 'Brak podglądu')
+            # snippet = msg.get('snippet', 'Brak podglądu')
             print(f'ID: {msg['id']}')
             print(f'Data: {date}')
             print(f'Nadawca: {sender}')
             print(f'Odbiorca: {to}')
             print(f'Temat: {subject}')
-            print(f'Załączniki: {attachments}')
-            print(f'Podgląd: {snippet}')
+            print(f'Załączniki: {attachments[0]}')
+            # print(f'Podgląd: {snippet}')
             print('-' * 80)
 
             
