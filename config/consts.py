@@ -4,3 +4,7 @@ ATTACHMENT = True
 SPEC_ATTACHMENT = 'pdf'
 OLDER_THAN = (1, 'day')
 NEWER_THAN = (1, 'month')
+TOKEN = './config/token.json'
+SECRET = './config/api_oauth.json'
+API_NAME = 'gmail'
+API_VERSION = 'v1'
