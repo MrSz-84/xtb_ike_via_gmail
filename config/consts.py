@@ -3,9 +3,7 @@ SUBJECT = 'Potwierdzenie wykonania zleceń'
 ATTACHMENT = True
 SPEC_ATTACHMENT = 'pdf'
 OLDER_THAN = '0d' 
-#(1, 'day')
 NEWER_THAN = '1m'
-#(1, 'month')
 TOKEN = './config/token.json'
 SECRET = './config/api_oauth.json'
 API_NAME = 'gmail'
