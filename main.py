@@ -71,54 +71,49 @@ def main():
         service = build(c.API_NAME, c.API_VERSION, credentials=creds)
         results = service.users().messages().list(userId='me', maxResults=10, q=query).execute()
         messages = results.get('messages', [])
-        
-        if not messages:
-            print('No messages found.')
-            return
-        print('Messages:')
-        for message in messages:
-            msg = service.users().messages().get(userId='me', id=message['id'], format='full').execute()
-            msg_id = msg['id']
-            headers = msg['payload']['headers']
-            
-            sender = next((header['value'] for header in headers if header['name'] == 'From'), 'Brak nadawcy')
-            sender = parse_senred(sender)
-            to = next((header['value'] for header in headers if header['name'] == 'To'), 'Brak odbiorcy')
-            subject = next((header['value'] for header in headers if header['name'] == 'Subject'), 'Brak tematu')
-            date = next((header['value'] for header in headers if header['name'] == 'Date'), 'Brak daty')
-            date = parse_date(date)
-            
-            attachments = []
-            if 'parts' in msg['payload']:
-                for part in msg['payload']['parts']:
-                    if 'filename' in part and part['filename']:
-                        if 'body' in part and 'attachmentId' in part['body']:
-                            attachment = service.users().messages().attachments().get(
-                                userId='me', messageId=message['id'], id=part['body']['attachmentId']
-                            ).execute()
-                            file_data = attachment['data']
-                            file_name = part['filename']
-                            file_bytes = base64.urlsafe_b64decode(file_data)
-                            attachments.append(file_name)
-                            attachments.append(file_bytes)
-                            
-                            
-
-            
-            # snippet = msg.get('snippet', 'Brak podglądu')
-            print(f'ID: {msg_id}')
-            print(f'Date: {date}')
-            print(f'From: {sender}')
-            print(f'To: {to}')
-            print(f'Subject: {subject}')
-            print(f'Attachments: {attachments[0]}')
-            # print(f'Podgląd: {snippet}')
-            print('-' * 80)
-
-            
-            
     except HttpError as error:
         print(f'An error occured: {error}')
         
+    if not messages:
+        print('No messages found.')
+        return
+    for message in messages:
+        msg = service.users().messages().get(userId='me', id=message['id'], format='full').execute()
+        msg_id = msg['id']
+        headers = msg['payload']['headers']
+        
+        sender = next((header['value'] for header in headers if header['name'] == 'From'), 'Brak nadawcy')
+        sender = parse_senred(sender)
+        to = next((header['value'] for header in headers if header['name'] == 'To'), 'Brak odbiorcy')
+        subject = next((header['value'] for header in headers if header['name'] == 'Subject'), 'Brak tematu')
+        date = next((header['value'] for header in headers if header['name'] == 'Date'), 'Brak daty')
+        date = parse_date(date)
+        
+        attachments = []
+        if 'parts' in msg['payload']:
+            for part in msg['payload']['parts']:
+                if 'filename' in part and part['filename']:
+                    if 'body' in part and 'attachmentId' in part['body']:
+                        attachment = service.users().messages().attachments().get(
+                            userId='me', messageId=message['id'], id=part['body']['attachmentId']
+                        ).execute()
+                        file_data = attachment['data']
+                        file_name = part['filename']
+                        file_bytes = base64.urlsafe_b64decode(file_data)
+                        attachments.append(file_name)
+                        attachments.append(file_bytes)
+        if msg_id not in read_emails:
+            read_emails.add(msg_id)
+            emails_dct[msg_id] =  {
+                'date': date, 
+                'from': sender, 
+                'to': to, 
+                'subject': subject,
+                'attachment': {'name': file_name, 'file': file_bytes} #file_name
+            }
+        
+    write_emails_id_file(read_emails)
+        
 if __name__ == "__main__":
     main()
+
