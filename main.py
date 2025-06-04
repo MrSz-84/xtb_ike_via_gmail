@@ -14,7 +14,6 @@ from config import consts as c
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 query = f'from:{c.SENDER} subject:{c.SUBJECT} has:attachment filename:{c.SPEC_ATTACHMENT} older_than:{c.OLDER_THAN} newer_than:{c.NEWER_THAN}'
 
-
 def parse_date(raw):
     dt = datetime.strptime(raw, '%a, %d %b %Y %H:%M:%S %z')
     local_tz = pytz.timezone('Europe/Warsaw')
@@ -57,36 +56,18 @@ def check_credentials(credentials):
             token.write(credentials.to_json())
     return credentials
 
+def create_data_struct(data_batch, read_emails, emails_dct):
+    if data_batch[0] not in read_emails:
+        read_emails.add(data_batch[0])
+        emails_dct[data_batch[0]] = {
+            'date': data_batch[1], 
+            'from': data_batch[2], 
+            'to': data_batch[3], 
+            'subject': data_batch[4],
+            'attachment': {'name': data_batch[5], 'file': data_batch[6]}
+            }
 
-def main():
-    emails_dct = {}
-    read_emails = read_emails_id_file(set())
-    
-    creds = check_credentials(None)
-
-    # if os.path.exists(c.TOKEN):
-    #     creds = Credentials.from_authorized_user_file(c.TOKEN, SCOPES)
-    # if not creds or not creds.valid:
-    #     if creds and creds.expired and creds.refresh_token:
-    #         creds.refresh(Request())
-    #     else:
-    #         flow = InstalledAppFlow.from_client_secrets_file(
-    #             c.SECRET, SCOPES
-    #         )
-    #         creds = flow.run_local_server(port=0)
-    #     with open(c.TOKEN, 'w') as token:
-    #         token.write(creds.to_json())
-    
-    try:
-        service = build(c.API_NAME, c.API_VERSION, credentials=creds)
-        results = service.users().messages().list(userId='me', maxResults=10, q=query).execute()
-        messages = results.get('messages', [])
-    except HttpError as error:
-        print(f'An error occured: {error}')
-        
-    if not messages:
-        print('No messages found.')
-        return
+def get_messages_details(service, emails_dct, read_emails, messages):
     for message in messages:
         msg = service.users().messages().get(userId='me', id=message['id'], format='full').execute()
         msg_id = msg['id']
@@ -99,7 +80,6 @@ def main():
         date = next((header['value'] for header in headers if header['name'] == 'Date'), 'Brak daty')
         date = parse_date(date)
         
-        attachments = []
         if 'parts' in msg['payload']:
             for part in msg['payload']['parts']:
                 if 'filename' in part and part['filename']:
@@ -110,20 +90,30 @@ def main():
                         file_data = attachment['data']
                         file_name = part['filename']
                         file_bytes = base64.urlsafe_b64decode(file_data)
-                        attachments.append(file_name)
-                        attachments.append(file_bytes)
-        if msg_id not in read_emails:
-            read_emails.add(msg_id)
-            emails_dct[msg_id] =  {
-                'date': date, 
-                'from': sender, 
-                'to': to, 
-                'subject': subject,
-                'attachment': {'name': file_name, 'file': file_bytes} #file_name
-            }
+        batch = [msg_id, date, sender, to, subject, file_name, file_bytes]
+        create_data_struct(batch, read_emails, emails_dct)
+    return emails_dct
+
+def main():
+    emails_dct = {}
+    read_emails = read_emails_id_file(set())
+    
+    creds = check_credentials(None)
+    
+    try:
+        service = build(c.API_NAME, c.API_VERSION, credentials=creds)
+        results = service.users().messages().list(userId='me', maxResults=10, q=query).execute()
+        messages = results.get('messages', [])
+    except HttpError as error:
+        print(f'An error occured: {error}')
         
+    if not messages:
+        print('No messages found.')
+        return
+    
+    emails_dct = get_messages_details(service, emails_dct, read_emails, messages)
     write_emails_id_file(read_emails)
-        
+    
 if __name__ == "__main__":
     main()
 
