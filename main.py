@@ -1,5 +1,10 @@
-import os.path
+import os
+import re
+import pytz
 import base64
+
+
+from datetime import datetime
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -11,7 +16,32 @@ from config import consts as c
 
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 
+
+def parse_date(raw):
+    dt = datetime.strptime(raw, '%a, %d %b %Y %H:%M:%S %z')
+    local_tz = pytz.timezone('Europe/Warsaw')
+    local_dt = dt.astimezone(local_tz)
+    iso_date = local_dt.isoformat()
+    return iso_date
+
+def parse_senred(to_parse):
+    email = re.search(r'<(.*)>', to_parse).group(1)
+    return email
+
+def read_emails_id_file(read_set):
+    temp_set = read_set
+    with open(c.READ_EMAILS, mode='a+', encoding='utf-8') as f:
+        f.seek(0, os.SEEK_END)
+        f_size = f.tell()
+        if not f_size == 0:
+            for line in f:
+                temp_set.add(line)
+    return temp_set
+
+
 def main():
+    emails_dct = {}
+    read_emails = read_emails_id_file(set())
     
     creds = None
     
@@ -28,7 +58,7 @@ def main():
         with open(c.TOKEN, 'w') as token:
             token.write(creds.to_json())
     
-    query = f'from:{c.SENDER} subject:{c.SUBJECT} has:attachment filename:{c.SPEC_ATTACHMENT} older_than:1d newer_than:1m'
+    query = f'from:{c.SENDER} subject:{c.SUBJECT} has:attachment filename:{c.SPEC_ATTACHMENT} older_than:{c.OLDER_THAN} newer_than:{c.NEWER_THAN}'
                 
     try:
         service = build(c.API_NAME, c.API_VERSION, credentials=creds)
@@ -38,16 +68,18 @@ def main():
         if not messages:
             print('No messages found.')
             return
-        print('Message:')
+        print('Messages:')
         for message in messages:
             msg = service.users().messages().get(userId='me', id=message['id'], format='full').execute()
-            
+            msg_id = msg['id']
             headers = msg['payload']['headers']
             
             sender = next((header['value'] for header in headers if header['name'] == 'From'), 'Brak nadawcy')
+            sender = parse_senred(sender)
             to = next((header['value'] for header in headers if header['name'] == 'To'), 'Brak odbiorcy')
             subject = next((header['value'] for header in headers if header['name'] == 'Subject'), 'Brak tematu')
             date = next((header['value'] for header in headers if header['name'] == 'Date'), 'Brak daty')
+            date = parse_date(date)
             
             attachments = []
             if 'parts' in msg['payload']:
@@ -67,12 +99,12 @@ def main():
 
             
             # snippet = msg.get('snippet', 'Brak podglądu')
-            print(f'ID: {msg['id']}')
-            print(f'Data: {date}')
-            print(f'Nadawca: {sender}')
-            print(f'Odbiorca: {to}')
-            print(f'Temat: {subject}')
-            print(f'Załączniki: {attachments[0]}')
+            print(f'ID: {msg_id}')
+            print(f'Date: {date}')
+            print(f'From: {sender}')
+            print(f'To: {to}')
+            print(f'Subject: {subject}')
+            print(f'Attachments: {attachments[0]}')
             # print(f'Podgląd: {snippet}')
             print('-' * 80)
 
@@ -83,3 +115,4 @@ def main():
         
 if __name__ == "__main__":
     main()
+    
