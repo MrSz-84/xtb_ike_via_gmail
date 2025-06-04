@@ -24,8 +24,8 @@ def parse_date(raw):
     iso_date = local_dt.isoformat()
     return iso_date
 
-def parse_senred(to_parse):
-    email = re.search(r'<(.*)>', to_parse).group(1)
+def parse_sender(to_parse):
+    email = re.search(r'<(.*?)>', to_parse).group(1)
     return email
 
 def read_emails_id_file(read_set):
@@ -83,7 +83,7 @@ def main():
         headers = msg['payload']['headers']
         
         sender = next((header['value'] for header in headers if header['name'] == 'From'), 'Brak nadawcy')
-        sender = parse_senred(sender)
+        sender = parse_sender(sender)
         to = next((header['value'] for header in headers if header['name'] == 'To'), 'Brak odbiorcy')
         subject = next((header['value'] for header in headers if header['name'] == 'Subject'), 'Brak tematu')
         date = next((header['value'] for header in headers if header['name'] == 'Date'), 'Brak daty')
