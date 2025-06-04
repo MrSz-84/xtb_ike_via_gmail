@@ -2,10 +2,7 @@ import os
 import re
 import pytz
 import base64
-
-
 from datetime import datetime
-
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -15,6 +12,7 @@ from config import consts as c
 
 
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
+query = f'from:{c.SENDER} subject:{c.SUBJECT} has:attachment filename:{c.SPEC_ATTACHMENT} older_than:{c.OLDER_THAN} newer_than:{c.NEWER_THAN}'
 
 
 def parse_date(raw):
@@ -37,7 +35,6 @@ def read_emails_id_file(read_set):
             file.seek(0)
             for line in file:
                 temp_set.add(line.strip())
-
     return temp_set
 
 def write_emails_id_file(write_set):
@@ -45,28 +42,41 @@ def write_emails_id_file(write_set):
         for id in write_set:
             f.write(id+'\n')
 
+def check_credentials(credentials):
+    if os.path.exists(c.TOKEN):
+        credentials = Credentials.from_authorized_user_file(c.TOKEN, SCOPES)
+    if not credentials or not credentials.valid:
+        if credentials and credentials.expired and credentials.refresh_token:
+            credentials.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(
+                c.SECRET, SCOPES
+            )
+            credentials = flow.run_local_server(port=0)
+        with open(c.TOKEN, 'w') as token:
+            token.write(credentials.to_json())
+    return credentials
+
 
 def main():
     emails_dct = {}
     read_emails = read_emails_id_file(set())
     
-    creds = None
+    creds = check_credentials(None)
+
+    # if os.path.exists(c.TOKEN):
+    #     creds = Credentials.from_authorized_user_file(c.TOKEN, SCOPES)
+    # if not creds or not creds.valid:
+    #     if creds and creds.expired and creds.refresh_token:
+    #         creds.refresh(Request())
+    #     else:
+    #         flow = InstalledAppFlow.from_client_secrets_file(
+    #             c.SECRET, SCOPES
+    #         )
+    #         creds = flow.run_local_server(port=0)
+    #     with open(c.TOKEN, 'w') as token:
+    #         token.write(creds.to_json())
     
-    if os.path.exists(c.TOKEN):
-        creds = Credentials.from_authorized_user_file(c.TOKEN, SCOPES)
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                c.SECRET, SCOPES
-            )
-            creds = flow.run_local_server(port=0)
-        with open(c.TOKEN, 'w') as token:
-            token.write(creds.to_json())
-    
-    query = f'from:{c.SENDER} subject:{c.SUBJECT} has:attachment filename:{c.SPEC_ATTACHMENT} older_than:{c.OLDER_THAN} newer_than:{c.NEWER_THAN}'
-                
     try:
         service = build(c.API_NAME, c.API_VERSION, credentials=creds)
         results = service.users().messages().list(userId='me', maxResults=10, q=query).execute()
