@@ -30,13 +30,20 @@ def parse_senred(to_parse):
 
 def read_emails_id_file(read_set):
     temp_set = read_set
-    with open(c.READ_EMAILS, mode='a+', encoding='utf-8') as f:
-        f.seek(0, os.SEEK_END)
-        f_size = f.tell()
+    with open(c.READ_EMAILS, mode='a+', encoding='utf-8') as file:
+        file.seek(0, os.SEEK_END)
+        f_size = file.tell()
         if not f_size == 0:
-            for line in f:
-                temp_set.add(line)
+            file.seek(0)
+            for line in file:
+                temp_set.add(line.strip())
+
     return temp_set
+
+def write_emails_id_file(write_set):
+    with open(c.READ_EMAILS, mode='w', encoding='utf-8') as f:
+        for id in write_set:
+            f.write(id+'\n')
 
 
 def main():
@@ -115,4 +122,3 @@ def main():
         
 if __name__ == "__main__":
     main()
-    
