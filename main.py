@@ -1,18 +1,27 @@
 import os
+import io
 import re
+import jdk
+import json
 import pytz
 import base64
+import tabula
 from datetime import datetime
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from googleapiclient.discovery import build
+from PyPDF2 import PdfReader, PdfWriter
 from config import consts as c
-
+jdk.install(version=17)
 
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 query = f'from:{c.SENDER} subject:{c.SUBJECT} has:attachment filename:{c.SPEC_ATTACHMENT} older_than:{c.OLDER_THAN} newer_than:{c.NEWER_THAN}'
+
+with open('./config/docs.json', mode='r', encoding='utf-8') as docs:
+    docs = json.load(docs)
+
 
 def parse_date(raw):
     dt = datetime.strptime(raw, '%a, %d %b %Y %H:%M:%S %z')
@@ -66,6 +75,19 @@ def create_data_struct(data_batch, read_emails, emails_dct):
             'subject': data_batch[4],
             'attachment': {'name': data_batch[5], 'file': data_batch[6]}
             }
+        
+def read_from_pdf(key, data_dct):
+    for val in data_dct.values():
+        reader = PdfReader(io.BytesIO(val['attachment']['file']))
+        reader.decrypt(key)
+        writer = PdfWriter()
+        with open('./files/temp.pdf', mode='wb+') as temp_pdf:
+            for page in reader.pages:
+                writer.add_page(page)
+            writer.write(temp_pdf)
+            dfs = tabula.read_pdf(temp_pdf, stream=True, pages='all')
+        print(dfs)
+        exit()
 
 def get_messages_details(service, emails_dct, read_emails, messages):
     for message in messages:
@@ -112,8 +134,12 @@ def main():
         return
     
     emails_dct = get_messages_details(service, emails_dct, read_emails, messages)
+    read_from_pdf(docs['key'], emails_dct)
     write_emails_id_file(read_emails)
+    
     
 if __name__ == "__main__":
     main()
+
+    
 
