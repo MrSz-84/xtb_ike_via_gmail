@@ -1,11 +1,11 @@
 import os
 import io
 import re
-import jdk
 import json
 import pytz
 import base64
 import tabula
+import pandas as pd
 from datetime import datetime
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -14,7 +14,7 @@ from googleapiclient.errors import HttpError
 from googleapiclient.discovery import build
 from PyPDF2 import PdfReader, PdfWriter
 from config import consts as c
-jdk.install(version=17)
+# pd.set_option('display.max_columns', None)
 
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 query = f'from:{c.SENDER} subject:{c.SUBJECT} has:attachment filename:{c.SPEC_ATTACHMENT} older_than:{c.OLDER_THAN} newer_than:{c.NEWER_THAN}'
@@ -75,6 +75,20 @@ def create_data_struct(data_batch, read_emails, emails_dct):
             'subject': data_batch[4],
             'attachment': {'name': data_batch[5], 'file': data_batch[6]}
             }
+
+def clean_dfs(df):
+    cleaned = df.columns = range(len(df.columns))
+    cleaned.drop(index=0, inplace=True)
+    cleaned.reset_index(inplace=True, drop=True)
+    cleaned.drop(columns=[1, 3, 5, 7, 9, 10, 13, 15, 18, 20, 22, 24, 26, 28, 30, 32], inplace=True)
+    cleaned.columns = range(len(cleaned.columns))
+    cleaned[3] = cleaned[3].str.replace('\r', ' ')
+    cleaned[7] = cleaned[7].str.replace('\r', ' ')
+    cleaned[11] = cleaned[11].str.replace('\r', ' ')
+    
+    print()
+    exit()
+    return cleaned
         
 def read_from_pdf(key, data_dct):
     for val in data_dct.values():
@@ -85,8 +99,15 @@ def read_from_pdf(key, data_dct):
             for page in reader.pages:
                 writer.add_page(page)
             writer.write(temp_pdf)
-            dfs = tabula.read_pdf(temp_pdf, stream=True, pages='all')
-        print(dfs)
+            columns = (40, 145, 200, 300, 390, 450, 545, 630, 725, 810, 895, 985, 1065, 1160, 1245, 1335, 1410)
+            areas = [[210.537,16.265,597.275,1429.485], [232.224,19.879,613.54,1425.871]]
+            dfs = tabula.read_pdf(temp_pdf, pages=[1, 2], area=areas, multiple_tables=True, columns=columns, lattice=True)
+        os.remove('./files/temp.pdf')
+        df1 = clean_dfs(dfs[1])
+        df2 = clean_dfs(dfs[2])
+        print(df1)
+        print(df2)
+
         exit()
 
 def get_messages_details(service, emails_dct, read_emails, messages):
