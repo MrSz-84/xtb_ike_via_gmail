@@ -75,19 +75,30 @@ def create_data_struct(data_batch, read_emails, emails_dct):
             'subject': data_batch[4],
             'attachment': {'name': data_batch[5], 'file': data_batch[6]}
             }
+        
+def replace_fractional(x):
+    if 'ETF' in x:
+        x = 'ETF'
+    elif 'ETC' in x:
+        x = 'ETC'
+    return x
+
+def merge_name_type(dfs_lst):
+    merged = pd.concat(dfs_lst)
+    merged.columns = c.MERGED_DFS_NAMES
+    merged = merged.astype(c.DATA_TYPES)
+    print(merged.info())
+    return merged
 
 def clean_dfs(df):
-    cleaned = df.columns = range(len(df.columns))
+    cleaned = df
+    cleaned.columns = range(len(cleaned.columns))
     cleaned.drop(index=0, inplace=True)
     cleaned.reset_index(inplace=True, drop=True)
     cleaned.drop(columns=[1, 3, 5, 7, 9, 10, 13, 15, 18, 20, 22, 24, 26, 28, 30, 32], inplace=True)
-    cleaned.columns = range(len(cleaned.columns))
-    cleaned[3] = cleaned[3].str.replace('\r', ' ')
-    cleaned[7] = cleaned[7].str.replace('\r', ' ')
-    cleaned[11] = cleaned[11].str.replace('\r', ' ')
-    
-    print()
-    exit()
+    cleaned[6] = cleaned[6].str.replace('\r', ' ')
+    cleaned[14] = cleaned[14].str.replace('\r', ' ')
+    cleaned[21] = cleaned[21].apply(replace_fractional)
     return cleaned
         
 def read_from_pdf(key, data_dct):
@@ -103,10 +114,8 @@ def read_from_pdf(key, data_dct):
             areas = [[210.537,16.265,597.275,1429.485], [232.224,19.879,613.54,1425.871]]
             dfs = tabula.read_pdf(temp_pdf, pages=[1, 2], area=areas, multiple_tables=True, columns=columns, lattice=True)
         os.remove('./files/temp.pdf')
-        df1 = clean_dfs(dfs[1])
-        df2 = clean_dfs(dfs[2])
-        print(df1)
-        print(df2)
+        df_to_process = merge_name_type([clean_dfs(dfs[1]), clean_dfs(dfs[2])])
+        print(df_to_process)
 
         exit()
 
