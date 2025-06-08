@@ -87,7 +87,7 @@ def merge_name_type(dfs_lst):
     merged = pd.concat(dfs_lst)
     merged.columns = c.MERGED_DFS_NAMES
     merged = merged.astype(c.DATA_TYPES)
-    print(merged.info())
+    merged.reset_index(drop=True, inplace=True)
     return merged
 
 def clean_dfs(df):
@@ -102,6 +102,7 @@ def clean_dfs(df):
     return cleaned
         
 def read_from_pdf(key, data_dct):
+    df_to_process = []
     for val in data_dct.values():
         reader = PdfReader(io.BytesIO(val['attachment']['file']))
         reader.decrypt(key)
@@ -110,14 +111,14 @@ def read_from_pdf(key, data_dct):
             for page in reader.pages:
                 writer.add_page(page)
             writer.write(temp_pdf)
-            columns = (40, 145, 200, 300, 390, 450, 545, 630, 725, 810, 895, 985, 1065, 1160, 1245, 1335, 1410)
+            # columns = (40, 145, 200, 300, 390, 450, 545, 630, 725, 810, 895, 985, 1065, 1160, 1245, 1335, 1410)
+            columns = (40, 145, 200, 320, 390, 450, 545, 630, 725, 810, 895, 985, 1065, 1160, 1245, 1335, 1410)
             areas = [[210.537,16.265,597.275,1429.485], [232.224,19.879,613.54,1425.871]]
             dfs = tabula.read_pdf(temp_pdf, pages=[1, 2], area=areas, multiple_tables=True, columns=columns, lattice=True)
         os.remove('./files/temp.pdf')
-        df_to_process = merge_name_type([clean_dfs(dfs[1]), clean_dfs(dfs[2])])
-        print(df_to_process)
-
-        exit()
+        for i in range(1, 3):
+            df_to_process.append(clean_dfs(dfs[i]))
+    return merge_name_type(df_to_process)
 
 def get_messages_details(service, emails_dct, read_emails, messages):
     for message in messages:
@@ -164,7 +165,9 @@ def main():
         return
     
     emails_dct = get_messages_details(service, emails_dct, read_emails, messages)
-    read_from_pdf(docs['key'], emails_dct)
+    merged_dfs = read_from_pdf(docs['key'], emails_dct)
+    print(merged_dfs)
+    exit()
     write_emails_id_file(read_emails)
     
     
