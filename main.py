@@ -95,7 +95,7 @@ def clean_dfs(df):
     cleaned.columns = range(len(cleaned.columns))
     cleaned.drop(index=0, inplace=True)
     cleaned.reset_index(inplace=True, drop=True)
-    cleaned.drop(columns=[1, 3, 5, 7, 9, 10, 13, 15, 18, 20, 22, 24, 26, 28, 30, 32], inplace=True)
+    cleaned.drop(columns=[0, 1, 3, 5, 7, 9, 10, 11, 13, 15, 18, 20, 22, 24, 26, 28, 30, 32], inplace=True)
     cleaned[6] = cleaned[6].str.replace('\r', ' ')
     cleaned[14] = cleaned[14].str.replace('\r', ' ')
     cleaned[21] = cleaned[21].apply(replace_fractional)
