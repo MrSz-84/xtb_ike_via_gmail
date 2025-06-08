@@ -14,12 +14,12 @@ from googleapiclient.errors import HttpError
 from googleapiclient.discovery import build
 from PyPDF2 import PdfReader, PdfWriter
 from config import consts as c
-# pd.set_option('display.max_columns', None)
+
 
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 query = f'from:{c.SENDER} subject:{c.SUBJECT} has:attachment filename:{c.SPEC_ATTACHMENT} older_than:{c.OLDER_THAN} newer_than:{c.NEWER_THAN}'
 
-with open('./config/docs.json', mode='r', encoding='utf-8') as docs:
+with open(c.DOCS_PATH, mode='r', encoding='utf-8') as docs:
     docs = json.load(docs)
 
 
@@ -107,7 +107,7 @@ def read_from_pdf(key, data_dct):
         reader = PdfReader(io.BytesIO(val['attachment']['file']))
         reader.decrypt(key)
         writer = PdfWriter()
-        with open('./files/temp.pdf', mode='wb+') as temp_pdf:
+        with open(c.TEMP_PDF, mode='wb+') as temp_pdf:
             for page in reader.pages:
                 writer.add_page(page)
             writer.write(temp_pdf)
@@ -115,7 +115,7 @@ def read_from_pdf(key, data_dct):
             columns = (40, 145, 200, 320, 390, 450, 545, 630, 725, 810, 895, 985, 1065, 1160, 1245, 1335, 1410)
             areas = [[210.537,16.265,597.275,1429.485], [232.224,19.879,613.54,1425.871]]
             dfs = tabula.read_pdf(temp_pdf, pages=[1, 2], area=areas, multiple_tables=True, columns=columns, lattice=True)
-        os.remove('./files/temp.pdf')
+        os.remove(c.TEMP_PDF)
         for i in range(1, 3):
             df_to_process.append(clean_dfs(dfs[i]))
     return merge_name_type(df_to_process)
@@ -147,6 +147,9 @@ def get_messages_details(service, emails_dct, read_emails, messages):
         create_data_struct(batch, read_emails, emails_dct)
     return emails_dct
 
+def write_to_csv(df):
+    df.to_csv(c.CSV_PATH, index=False, encoding='utf-8')
+
 def main():
     emails_dct = {}
     read_emails = read_emails_id_file(set())
@@ -166,7 +169,7 @@ def main():
     
     emails_dct = get_messages_details(service, emails_dct, read_emails, messages)
     merged_dfs = read_from_pdf(docs['key'], emails_dct)
-    print(merged_dfs)
+    write_to_csv(merged_dfs)
     exit()
     write_emails_id_file(read_emails)
     
