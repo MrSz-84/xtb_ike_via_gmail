@@ -9,6 +9,9 @@ SECRET = './config/api_oauth.json'
 API_NAME = 'gmail'
 API_VERSION = 'v1'
 READ_EMAILS = './files/already_read.txt'
+TEMP_PDF = './files/temp.pdf'
+DOCS_PATH = './config/docs.json'
+CSV_PATH = './files/export.csv'
 MERGED_DFS_NAMES = [
     'Numer zlecenia',
     'Symbol',
