@@ -7,6 +7,7 @@ import base64
 import tabula
 import pandas as pd
 from datetime import datetime
+from google.cloud import storage
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -16,6 +17,7 @@ from PyPDF2 import PdfReader, PdfWriter
 from config import consts as c
 
 
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = c.SERVICE_ACC
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 query = f'from:{c.SENDER} subject:{c.SUBJECT} has:attachment filename:{c.SPEC_ATTACHMENT} older_than:{c.OLDER_THAN} newer_than:{c.NEWER_THAN}'
 
@@ -29,6 +31,13 @@ def parse_date(raw):
     local_dt = dt.astimezone(local_tz)
     iso_date = local_dt.isoformat()
     return iso_date
+
+def export_date():
+    dt = datetime.today()
+    local_tz = pytz.timezone('Europe/Warsaw')
+    dt = dt.astimezone(local_tz)
+    dt = dt.strftime('%Y%m%d_%H%M%S')
+    return dt
 
 def parse_sender(to_parse):
     email = re.search(r'<(.*?)>', to_parse).group(1)
@@ -147,8 +156,15 @@ def get_messages_details(service, emails_dct, read_emails, messages):
         create_data_struct(batch, read_emails, emails_dct)
     return emails_dct
 
-def write_to_csv(df):
-    df.to_csv(c.CSV_PATH, index=False, encoding='utf-8')
+def write_to_csv(df, csvname):
+    df.to_csv(csvname, index=False, encoding='utf-8')
+    
+def upload_to_bucket(fname, gsbucket, dest_fname):
+    dest_fname = dest_fname.replace('./files/','')
+    client = storage.Client()
+    bucket = client.bucket(gsbucket)
+    blob = bucket.blob(dest_fname)
+    blob.upload_from_filename(fname)
 
 def main():
     emails_dct = {}
@@ -169,13 +185,16 @@ def main():
     
     emails_dct = get_messages_details(service, emails_dct, read_emails, messages)
     merged_dfs = read_from_pdf(docs['key'], emails_dct)
-    write_to_csv(merged_dfs)
+    csv_name = f'{c.CSV_PATH}{export_date()}.csv'
+    write_to_csv(merged_dfs, csv_name)
+    try:
+        upload_to_bucket(csv_name, c.BUCKET_PATH, csv_name)
+    except Exception as e:
+        os.remove(csv_name)
+        print(e)
+    os.remove(csv_name)
     exit()
     write_emails_id_file(read_emails)
-    
-    
+
 if __name__ == "__main__":
     main()
-
-    
-
