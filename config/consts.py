@@ -23,13 +23,13 @@ MERGED_DFS_NAMES = [
     'Data i czas transakcji',
     'Zlecenie otwarcia',
     'Cena jednostkowa',
-    'Cena całkowita',
-    'Klasa aktywów',
+    'Cena calkowita',
+    'Klasa aktywow',
     'Waluta kwotowania instrumentu',
     'Kurs przewalutowania',
     'Koszty przewalutowania',
     'Prowizja',
-    'Łączne koszty']
+    'Laczne koszty']
 DATA_TYPES = {
     'Numer zlecenia': 'Int64',
     'Symbol': 'string',
@@ -39,10 +39,10 @@ DATA_TYPES = {
     'Data i czas transakcji': 'datetime64[s]',
     'Zlecenie otwarcia': 'string',
     'Cena jednostkowa': 'Float64',
-    'Cena całkowita': 'Float64',
-    'Klasa aktywów': 'string',
+    'Cena calkowita': 'Float64',
+    'Klasa aktywow': 'string',
     'Waluta kwotowania instrumentu': 'string',
     'Kurs przewalutowania': 'Float64',
     'Koszty przewalutowania': 'Float64',
     'Prowizja': 'Float64',
-    'Łączne koszty': 'Float64'}
+    'Laczne koszty': 'Float64'}
