@@ -1,4 +1,4 @@
-import functions_framework, datetime
+import functions_framework, datetime, traceback, logging
 from google.cloud import bigquery
 from google.api_core import exceptions
 
@@ -46,7 +46,7 @@ def process_file(cloudevent):
             print(f'ℹ️ Table {table_id} exists - TRUNCATE')
             query = f'TRUNCATE TABLE `{table_id}`'
             client.query(query).result()
-        except bigquery.NotFound:
+        except exceptions.NotFound:
             print(f'ℹ️ Creating table {table_id}')
             client.create_table(table_ref)
         
@@ -65,6 +65,5 @@ def process_file(cloudevent):
         create_table_if_not_exist(SCHEMA, TABLE_ID_STR, time, file, bucket)
         print("✅ Finished successfully")
     except Exception as e:
-        import traceback, logging
-        logging.error("❌ Main error: %s\n%s", e, traceback.format_exec())
+        logging.error("❌ Main error: %s\n%s", e, traceback.format_exc())
         raise
