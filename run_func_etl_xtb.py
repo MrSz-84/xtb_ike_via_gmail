@@ -54,7 +54,9 @@ def process_file(cloudevent):
         job_config = bigquery.LoadJobConfig(
             source_format=bigquery.SourceFormat.CSV,
             skip_leading_rows=1,
-            autodetect=True
+            autodetect=False,
+            schema = table_schema,
+            write_disposition = bigquery.WriteDisposition.WRITE_TRUNCATE
         )
         print(f'⬆️ Uploading {uri} to {table_id}')
         client.load_table_from_uri(uri, table_id, job_config=job_config).result()
