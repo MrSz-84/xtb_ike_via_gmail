@@ -1,11 +1,4 @@
-import os
-import io
-import re
-import json
-import pytz
-import base64
-import tabula
-import pandas as pd
+import os, io, re, json, pytz, base64, tabula, pandas as pd
 from datetime import datetime
 from google.cloud import storage
 from google.auth.transport.requests import Request
@@ -58,21 +51,6 @@ def write_emails_id_file(write_set):
     with open(c.READ_EMAILS, mode='w', encoding='utf-8') as f:
         for id in write_set:
             f.write(id+'\n')
-
-def check_credentials(credentials):
-    if os.path.exists(c.TOKEN):
-        credentials = Credentials.from_authorized_user_file(c.TOKEN, SCOPES)
-    if not credentials or not credentials.valid:
-        if credentials and credentials.expired and credentials.refresh_token:
-            credentials.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                c.SECRET, SCOPES
-            )
-            credentials = flow.run_local_server(port=0)
-        with open(c.TOKEN, 'w') as token:
-            token.write(credentials.to_json())
-    return credentials
 
 def create_data_struct(data_batch, read_emails, emails_dct):
     if data_batch[0] not in read_emails:
@@ -166,6 +144,21 @@ def upload_to_bucket(fname, gsbucket, dest_fname):
     blob = bucket.blob(dest_fname)
     blob.upload_from_filename(fname)
 
+def check_credentials(credentials):
+    if os.path.exists(c.TOKEN):
+        credentials = Credentials.from_authorized_user_file(c.TOKEN, SCOPES)
+    if not credentials or not credentials.valid:
+        if credentials and credentials.expired and credentials.refresh_token:
+            credentials.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(
+                c.SECRET, SCOPES
+            )
+            credentials = flow.run_local_server(port=0)
+        with open(c.TOKEN, 'w') as token:
+            token.write(credentials.to_json())
+    return credentials
+
 def main():
     emails_dct = {}
     read_emails = read_emails_id_file(set())
@@ -174,7 +167,7 @@ def main():
     
     try:
         service = build(c.API_NAME, c.API_VERSION, credentials=creds)
-        results = service.users().messages().list(userId='me', maxResults=10, q=query).execute()
+        results = service.users().messages().list(userId='me', maxResults=13, q=query).execute()
         messages = results.get('messages', [])
     except HttpError as error:
         print(f'An error occured: {error}')
