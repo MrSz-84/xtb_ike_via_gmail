@@ -14,7 +14,6 @@ DOCS_PATH = './config/docs.json'
 CSV_PATH = './tmp/xtb_export'
 BUCKET_PATH = 'xtb_processed_df_dumps'
 MAIL_IDS_PATH = 'xtb-gmail-read-email-id'
-MAIL_IDS_FILENAME = 'already_read.txt'
 SERVICE_ACC = './config/xtb-ike-wallet-0a604e129e1a.json'
 MERGED_DFS_NAMES = [
     'Numer zlecenia',
