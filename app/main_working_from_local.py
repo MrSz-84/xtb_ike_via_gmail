@@ -11,9 +11,6 @@ from config import consts as c
 
 
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = c.SERVICE_ACC
-os.environ['TOKEN_JSON'] = c.TOKEN
-os.environ['CLIENT_SECRET_JSON'] = c.SECRET
-os.environ['DOCS_PATH'] = c.DOCS_PATH
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 query = f'from:{c.SENDER} subject:{c.SUBJECT} has:attachment filename:{c.SPEC_ATTACHMENT} older_than:{c.OLDER_THAN} newer_than:{c.NEWER_THAN}'
 
@@ -139,13 +136,14 @@ def get_messages_details(service, emails_dct, read_emails, messages):
 
 def write_to_csv(df, csvname):
     df.to_csv(csvname, index=False, encoding='utf-8')
-    
+
 def upload_to_bucket(fname, gsbucket, dest_fname):
-    dest_fname = dest_fname.replace('./files/','')
+    dest_fname = dest_fname.replace('./tmp/','')
     client = storage.Client()
     bucket = client.bucket(gsbucket)
     blob = bucket.blob(dest_fname)
     blob.upload_from_filename(fname)
+    print(f'Upload of the file {fname} to {gsbucket} cloud storage bucket complete.')
 
 def check_credentials(credentials):
     if os.path.exists(c.TOKEN):
@@ -162,8 +160,21 @@ def check_credentials(credentials):
             token.write(credentials.to_json())
     return credentials
 
+def dowlnoad_from_bucket(source_fname, gsbucket, dest_fname):
+    source_fname = dest_fname.replace('./tmp/','')
+    client = storage.Client()
+    bucket = client.bucket(gsbucket)
+    blob = bucket.blob(source_fname)
+    if blob.exists():
+        print(f'Cloud Storage file object found. Downloading and writing...  {dest_fname}')
+        blob.download_to_filename(dest_fname)
+    else:
+        print(f'Cloud Storage file object not found. Creating empty file...  {dest_fname}')
+        write_emails_id_file(set())
+
 def main():
     emails_dct = {}
+    dowlnoad_from_bucket(c.READ_EMAILS, c.MAIL_IDS_PATH, c.READ_EMAILS)
     read_emails = read_emails_id_file(set())
     
     creds = check_credentials(None)
@@ -176,21 +187,33 @@ def main():
         print(f'An error occured: {error}')
         
     if not messages:
-        print('No messages found.')
+        print('No messages found. Finishing program...')
+        os.remove(c.READ_EMAILS)
         return
     
     emails_dct = get_messages_details(service, emails_dct, read_emails, messages)
+    if not bool(emails_dct):
+        print('No new messages to process. Finishing program...')
+        os.remove(c.READ_EMAILS)
+        return
     merged_dfs = read_from_pdf(docs['key'], emails_dct)
     csv_name = f'{c.CSV_PATH}{export_date()}.csv'
     write_to_csv(merged_dfs, csv_name)
-    try:
-        upload_to_bucket(csv_name, c.BUCKET_PATH, csv_name)
-    except Exception as e:
-        os.remove(csv_name)
-        print(e)
-    os.remove(csv_name)
-    exit()
+    # try:
+    #     upload_to_bucket(csv_name, c.BUCKET_PATH, csv_name)
+    # except Exception as e:
+    #     os.remove(csv_name)
+    #     print(e)
     write_emails_id_file(read_emails)
+    try:
+        upload_to_bucket(c.READ_EMAILS, c.MAIL_IDS_PATH, c.READ_EMAILS)
+    except Exception as e:
+        os.remove(c.READ_EMAILS)
+        print(e)
+        
+    os.remove(c.READ_EMAILS)
+    os.remove(csv_name)
+    print('All tasks done, finishing program...')
 
 if __name__ == "__main__":
     main()
