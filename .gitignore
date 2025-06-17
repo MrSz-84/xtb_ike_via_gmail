@@ -1,7 +1,7 @@
-config/xtb-ike-wallet-0a604e129e1a.json
-config/api_oauth.json
-config/gmail_token.json
-config/docs.json
-config/token.json
-config/__pycache__
+app/config/xtb-ike-wallet-0a604e129e1a.json
+app/config/api_oauth.json
+app/config/gmail_token.json
+app/config/docs.json
+app/config/token.json
+app/config/__pycache__
 venv
