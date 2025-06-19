@@ -8,17 +8,17 @@ from googleapiclient.discovery import build
 from config import consts as c
 
 
-with open('./config/token.json', mode='r', encoding='utf-8') as f:
-    os.environ['TOKEN_JSON'] = f.read()
+# with open('./config/token.json', mode='r', encoding='utf-8') as f:
+#     os.environ['TOKEN_JSON'] = f.read()
     
-with open('./config/api_oauth.json', mode='r', encoding='utf-8') as f:
-    os.environ['CLIENT_SECRET_JSON'] = f.read()
+# with open('./config/api_oauth.json', mode='r', encoding='utf-8') as f:
+#     os.environ['CLIENT_SECRET_JSON'] = f.read()
 
-with open('./config/docs.json', mode='r', encoding='utf-8') as f:
-    os.environ['PDF_DECODE_KEY'] = f.read()
+# with open('./config/docs.json', mode='r', encoding='utf-8') as f:
+#     os.environ['PDF_DECODE_KEY'] = f.read()
     
-with open('./config/xtb-ike-wallet-0a604e129e1a.json', mode='r', encoding='utf-8') as f:
-    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = './config/xtb-ike-wallet-0a604e129e1a.json'
+# with open('./config/xtb-ike-wallet-0a604e129e1a.json', mode='r', encoding='utf-8') as f:
+#     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = './config/xtb-ike-wallet-0a604e129e1a.json'
 
 
 # logging.basicConfig(level=logging.ERROR)
@@ -173,7 +173,7 @@ def main():
     read_emails = read_emails_id_file(set())
     
     creds = check_credentials()
-    # exit('▶️ Start – ...  ✅ Gmail credentials loaded')
+    print('▶️ Start – ...  ✅ Gmail credentials loaded')
         
     try:
         service = build(c.API_NAME, c.API_VERSION, credentials=creds)
