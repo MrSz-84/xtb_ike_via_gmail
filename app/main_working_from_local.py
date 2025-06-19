@@ -18,7 +18,6 @@ query = f'from:{c.SENDER} subject:{c.SUBJECT} has:attachment filename:{c.SPEC_AT
 with open(c.DOCS_PATH, mode='r', encoding='utf-8') as docs:
     docs = json.load(docs)
 
-
 def parse_date(raw):
     dt = datetime.strptime(raw, '%a, %d %b %Y %H:%M:%S %z')
     local_tz = pytz.timezone('Europe/Warsaw')
@@ -195,12 +194,11 @@ def main():
     #     os.remove(csv_name)
     #     print(e)
     write_emails_id_file(read_emails)
-    # try:
-    #     upload_to_bucket(c.READ_EMAILS, c.MAIL_IDS_PATH, c.READ_EMAILS)
-    # except Exception as e:
-    #     os.remove(c.READ_EMAILS)
-    #     print(e)
-        
+    try:
+        upload_to_bucket(c.READ_EMAILS, c.MAIL_IDS_PATH, c.READ_EMAILS)
+    except Exception as e:
+        os.remove(c.READ_EMAILS)
+        print(e)
     os.remove(c.READ_EMAILS)
     os.remove(csv_name)
     print('All tasks done, finishing program...')
