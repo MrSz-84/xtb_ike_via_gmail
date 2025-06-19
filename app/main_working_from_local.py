@@ -1,4 +1,4 @@
-import os, io, re, json, pytz, base64, tabula, pandas as pd
+import os, io, re, json, pytz, base64, pdfplumber, logging, pandas as pd
 from datetime import datetime
 from google.cloud import storage
 from google.auth.transport.requests import Request
@@ -6,9 +6,10 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.errors import HttpError
 from googleapiclient.discovery import build
-from PyPDF2 import PdfReader, PdfWriter
 from config import consts as c
 
+
+logging.basicConfig(level=logging.ERROR)
 
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = c.SERVICE_ACC
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
@@ -80,31 +81,20 @@ def merge_name_type(dfs_lst):
 def clean_dfs(df):
     cleaned = df
     cleaned.columns = range(len(cleaned.columns))
-    cleaned.drop(index=0, inplace=True)
-    cleaned.reset_index(inplace=True, drop=True)
-    cleaned.drop(columns=[0, 1, 3, 5, 7, 9, 10, 11, 13, 15, 18, 20, 22, 24, 26, 28, 30, 32], inplace=True)
-    cleaned[6] = cleaned[6].str.replace('\r', ' ')
-    cleaned[14] = cleaned[14].str.replace('\r', ' ')
-    cleaned[21] = cleaned[21].apply(replace_fractional)
+    cleaned.drop(columns=[0, 5], inplace=True)
+    cleaned[3] = cleaned[3].str.replace('\n', ' ')
+    cleaned[7] = cleaned[7].str.replace('\n', ' ')
+    cleaned[11] = cleaned[11].apply(replace_fractional)
     return cleaned
-        
+
 def read_from_pdf(key, data_dct):
     df_to_process = []
     for val in data_dct.values():
-        reader = PdfReader(io.BytesIO(val['attachment']['file']))
-        reader.decrypt(key)
-        writer = PdfWriter()
-        with open(c.TEMP_PDF, mode='wb+') as temp_pdf:
-            for page in reader.pages:
-                writer.add_page(page)
-            writer.write(temp_pdf)
-            # columns = (40, 145, 200, 300, 390, 450, 545, 630, 725, 810, 895, 985, 1065, 1160, 1245, 1335, 1410)
-            columns = (40, 145, 200, 320, 390, 450, 545, 630, 725, 810, 895, 985, 1065, 1160, 1245, 1335, 1410)
-            areas = [[210.537,16.265,597.275,1429.485], [232.224,19.879,613.54,1425.871]]
-            dfs = tabula.read_pdf(temp_pdf, pages=[1, 2], area=areas, multiple_tables=True, columns=columns, lattice=True)
-        os.remove(c.TEMP_PDF)
-        for i in range(1, 3):
-            df_to_process.append(clean_dfs(dfs[i]))
+        pdf = pdfplumber.open(io.BytesIO(val['attachment']['file']), password=key)
+        for page in pdf.pages:
+            table = page.extract_tables()
+            table = pd.DataFrame(table[1], columns=table[0][0])
+            df_to_process.append(clean_dfs(table))
     return merge_name_type(df_to_process)
 
 def get_messages_details(service, emails_dct, read_emails, messages):
@@ -205,11 +195,11 @@ def main():
     #     os.remove(csv_name)
     #     print(e)
     write_emails_id_file(read_emails)
-    try:
-        upload_to_bucket(c.READ_EMAILS, c.MAIL_IDS_PATH, c.READ_EMAILS)
-    except Exception as e:
-        os.remove(c.READ_EMAILS)
-        print(e)
+    # try:
+    #     upload_to_bucket(c.READ_EMAILS, c.MAIL_IDS_PATH, c.READ_EMAILS)
+    # except Exception as e:
+    #     os.remove(c.READ_EMAILS)
+    #     print(e)
         
     os.remove(c.READ_EMAILS)
     os.remove(csv_name)
