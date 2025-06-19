@@ -1,20 +1,30 @@
-import os, io, re, json, pytz, base64, tabula, pandas as pd
+import os, io, re, json, pytz, base64, pdfplumber, logging, pandas as pd
 from datetime import datetime
 from google.cloud import storage, secretmanager
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.errors import HttpError
 from googleapiclient.discovery import build
-from PyPDF2 import PdfReader, PdfWriter
 from config import consts as c
 
 
-# os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = c.SERVICE_ACC
+with open('./config/token.json', mode='r', encoding='utf-8') as f:
+    os.environ['TOKEN_JSON'] = f.read()
+    
+with open('./config/api_oauth.json', mode='r', encoding='utf-8') as f:
+    os.environ['CLIENT_SECRET_JSON'] = f.read()
+
+with open('./config/docs.json', mode='r', encoding='utf-8') as f:
+    os.environ['PDF_DECODE_KEY'] = f.read()
+    
+with open('./config/xtb-ike-wallet-0a604e129e1a.json', mode='r', encoding='utf-8') as f:
+    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = './config/xtb-ike-wallet-0a604e129e1a.json'
+
+
+# logging.basicConfig(level=logging.ERROR)
+DOCS = os.environ.get('PDF_DECODE_KEY').replace('"', '')
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 query = f'from:{c.SENDER} subject:{c.SUBJECT} has:attachment filename:{c.SPEC_ATTACHMENT} older_than:{c.OLDER_THAN} newer_than:{c.NEWER_THAN}'
-
-with open(c.DOCS_PATH, mode='r', encoding='utf-8') as docs:
-    docs = json.load(docs)
 
 def parse_date(raw):
     dt = datetime.strptime(raw, '%a, %d %b %Y %H:%M:%S %z')
@@ -78,38 +88,27 @@ def merge_name_type(dfs_lst):
 def clean_dfs(df):
     cleaned = df
     cleaned.columns = range(len(cleaned.columns))
-    cleaned.drop(index=0, inplace=True)
-    cleaned.reset_index(inplace=True, drop=True)
-    cleaned.drop(columns=[0, 1, 3, 5, 7, 9, 10, 11, 13, 15, 18, 20, 22, 24, 26, 28, 30, 32], inplace=True)
-    cleaned[6] = cleaned[6].str.replace('\r', ' ')
-    cleaned[14] = cleaned[14].str.replace('\r', ' ')
-    cleaned[21] = cleaned[21].apply(replace_fractional)
+    cleaned.drop(columns=[0, 5], inplace=True)
+    cleaned[3] = cleaned[3].str.replace('\n', ' ')
+    cleaned[7] = cleaned[7].str.replace('\n', ' ')
+    cleaned[11] = cleaned[11].apply(replace_fractional)
     return cleaned
         
 def read_from_pdf(key, data_dct):
     df_to_process = []
     for val in data_dct.values():
-        reader = PdfReader(io.BytesIO(val['attachment']['file']))
-        reader.decrypt(key)
-        writer = PdfWriter()
-        with open(c.TEMP_PDF, mode='wb+') as temp_pdf:
-            for page in reader.pages:
-                writer.add_page(page)
-            writer.write(temp_pdf)
-            # columns = (40, 145, 200, 300, 390, 450, 545, 630, 725, 810, 895, 985, 1065, 1160, 1245, 1335, 1410)
-            columns = (40, 145, 200, 320, 390, 450, 545, 630, 725, 810, 895, 985, 1065, 1160, 1245, 1335, 1410)
-            areas = [[210.537,16.265,597.275,1429.485], [232.224,19.879,613.54,1425.871]]
-            dfs = tabula.read_pdf(temp_pdf, pages=[1, 2], area=areas, multiple_tables=True, columns=columns, lattice=True)
-        os.remove(c.TEMP_PDF)
-        for i in range(1, 3):
-            df_to_process.append(clean_dfs(dfs[i]))
+        pdf = pdfplumber.open(io.BytesIO(val['attachment']['file']), password=key)
+        for page in pdf.pages:
+            table = page.extract_tables()
+            table = pd.DataFrame(table[1], columns=table[0][0])
+            df_to_process.append(clean_dfs(table))
     return merge_name_type(df_to_process)
 
 def write_to_csv(df, csvname):
     df.to_csv(csvname, index=False, encoding='utf-8')
     
 def upload_to_bucket(fname, gsbucket, dest_fname):
-    dest_fname = dest_fname.replace('./files/','')
+    dest_fname = dest_fname.replace('./tmp/','')
     client = storage.Client()
     bucket = client.bucket(gsbucket)
     blob = bucket.blob(dest_fname)
@@ -174,7 +173,7 @@ def main():
     read_emails = read_emails_id_file(set())
     
     creds = check_credentials()
-    exit('▶️ Start – ...  ✅ Gmail credentials loaded')
+    # exit('▶️ Start – ...  ✅ Gmail credentials loaded')
         
     try:
         service = build(c.API_NAME, c.API_VERSION, credentials=creds)
@@ -193,7 +192,7 @@ def main():
         print('No new messages to process. Finishing program...')
         os.remove(c.READ_EMAILS)
         return
-    merged_dfs = read_from_pdf(docs['key'], emails_dct)
+    merged_dfs = read_from_pdf(DOCS, emails_dct)
     csv_name = f'{c.CSV_PATH}{export_date()}.csv'
     write_to_csv(merged_dfs, csv_name)
     # try:
