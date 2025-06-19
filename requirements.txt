@@ -1,11 +1,4 @@
-os
-io
-re
-json
 pytz
-base64
-logging
-datetime
 pdfplumber
 pandas
 google-cloud-storage==2.*
