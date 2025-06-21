@@ -1,4 +1,10 @@
-import os, io, re, json, pytz, base64, pdfplumber, logging, pandas as pd
+import os, sys
+
+user_packages = os.path.expanduser("~/.local/lib/python3.13/site-packages")
+if os.path.exists(user_packages) and user_packages not in sys.path:
+    sys.path.insert(0, user_packages)
+
+import io, re, json, pytz, base64, pdfplumber, logging, pandas as pd
 from datetime import datetime
 from google.cloud import storage, secretmanager
 from google.auth.transport.requests import Request
