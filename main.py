@@ -173,7 +173,7 @@ def main():
     read_emails = read_emails_id_file(set())
     
     creds = check_credentials()
-    print('▶️ Start – ...  ✅ Gmail credentials loaded')
+    print('▶️ Start – ...  ✅ Gmail credentials loaded.')
         
     try:
         service = build(c.API_NAME, c.API_VERSION, credentials=creds)
