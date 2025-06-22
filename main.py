@@ -5,20 +5,21 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.errors import HttpError
 from googleapiclient.discovery import build
+from pdfminer.pdfdocument import PDFPasswordIncorrect
 from config import consts as c
 
 
-# with open('./config/token.json', mode='r', encoding='utf-8') as f:
-#     os.environ['TOKEN_JSON'] = f.read()
+with open('./config/token.json', mode='r', encoding='utf-8') as f:
+    os.environ['TOKEN_JSON'] = f.read()
     
-# with open('./config/api_oauth.json', mode='r', encoding='utf-8') as f:
-#     os.environ['CLIENT_SECRET_JSON'] = f.read()
+with open('./config/api_oauth.json', mode='r', encoding='utf-8') as f:
+    os.environ['CLIENT_SECRET_JSON'] = f.read()
 
-# with open('./config/docs.json', mode='r', encoding='utf-8') as f:
-#     os.environ['PDF_DECODE_KEY'] = f.read()
+with open('./config/docs.json', mode='r', encoding='utf-8') as f:
+    os.environ['PDF_DECODE_KEY'] = f.read()
     
-# with open('./config/xtb-ike-wallet-0a604e129e1a.json', mode='r', encoding='utf-8') as f:
-#     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = './config/xtb-ike-wallet-0a604e129e1a.json'
+with open('./config/xtb-ike-wallet-0a604e129e1a.json', mode='r', encoding='utf-8') as f:
+    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = './config/xtb-ike-wallet-0a604e129e1a.json'
 
 
 # logging.basicConfig(level=logging.ERROR)
@@ -97,7 +98,10 @@ def clean_dfs(df):
 def read_from_pdf(key, data_dct):
     df_to_process = []
     for val in data_dct.values():
-        pdf = pdfplumber.open(io.BytesIO(val['attachment']['file']), password=key)
+        try:
+            pdf = pdfplumber.open(io.BytesIO(val['attachment']['file']), password=key)
+        except PDFPasswordIncorrect:
+            logging.error(f'❌ Error occurred. Invalid PDF decryption password. Check Sectret Manager Configuration {key}')
         for page in pdf.pages:
             table = page.extract_tables()
             table = pd.DataFrame(table[1], columns=table[0][0])
@@ -115,7 +119,7 @@ def upload_to_bucket(fname, gsbucket, dest_fname):
     blob.upload_from_filename(fname)
     print(f'⬆️ Upload of the file {fname} to {gsbucket} cloud storage bucket complete.')
     
-def dowlnoad_from_bucket(source_fname, gsbucket, dest_fname):
+def download_from_bucket(source_fname, gsbucket, dest_fname):
     source_fname = dest_fname.replace('./tmp/','')
     client = storage.Client()
     bucket = client.bucket(gsbucket)
@@ -170,6 +174,7 @@ def get_messages_details(service, emails_dct, read_emails, messages):
 
 def main():
     emails_dct = {}
+    download_from_bucket(c.READ_EMAILS, c.MAIL_IDS_PATH, c.READ_EMAILS)
     read_emails = read_emails_id_file(set())
     
     creds = check_credentials()
@@ -180,7 +185,7 @@ def main():
         results = service.users().messages().list(userId='me', maxResults=13, q=query).execute()
         messages = results.get('messages', [])
     except HttpError as error:
-        print(f'An error occured: {error}')
+        print(f'❌ An error occured: {error}')
         
     if not messages:
         print('ℹ️ No messages found. Finishing program...')
