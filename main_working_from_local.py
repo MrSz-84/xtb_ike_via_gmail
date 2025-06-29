@@ -188,11 +188,11 @@ def main():
     merged_dfs = read_from_pdf(docs['key'], emails_dct)
     csv_name = f'{c.CSV_PATH}{export_date()}.csv'
     write_to_csv(merged_dfs, csv_name)
-    # try:
-    #     upload_to_bucket(csv_name, c.BUCKET_PATH, csv_name)
-    # except Exception as e:
-    #     os.remove(csv_name)
-    #     print(e)
+    try:
+        upload_to_bucket(csv_name, c.BUCKET_PATH, csv_name)
+    except Exception as e:
+        os.remove(csv_name)
+        print(e)
     write_emails_id_file(read_emails)
     try:
         upload_to_bucket(c.READ_EMAILS, c.MAIL_IDS_PATH, c.READ_EMAILS)
