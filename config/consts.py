@@ -15,6 +15,10 @@ CSV_PATH = './tmp/xtb_export'
 BUCKET_PATH = 'xtb_processed_df_dumps'
 MAIL_IDS_PATH = 'xtb-gmail-read-email-id'
 SERVICE_ACC = './config/xtb-ike-wallet-0a604e129e1a.json'
+NBP_MID = 'a'
+NBP_ASK_BID = 'c'
+NBP_BASE_REQ = 'https://api.nbp.pl/api/exchangerates/rates/'
+NBP_TMP_CSV = './tmp/nbp.csv'
 MERGED_DFS_NAMES = [
     'Numer zlecenia',
     'Symbol',
