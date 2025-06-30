@@ -9,20 +9,20 @@ from pdfminer.pdfdocument import PDFPasswordIncorrect
 from config import consts as c
 
 
-with open('./config/token.json', mode='r', encoding='utf-8') as f:
-    os.environ['TOKEN_JSON'] = f.read()
+# with open('./config/token.json', mode='r', encoding='utf-8') as f:
+#     os.environ['TOKEN_JSON'] = f.read()
     
-with open('./config/api_oauth.json', mode='r', encoding='utf-8') as f:
-    os.environ['CLIENT_SECRET_JSON'] = f.read()
+# with open('./config/api_oauth.json', mode='r', encoding='utf-8') as f:
+#     os.environ['CLIENT_SECRET_JSON'] = f.read()
 
-with open('./config/docs.json', mode='r', encoding='utf-8') as f:
-    os.environ['PDF_DECODE_KEY'] = f.read()
+# with open('./config/docs.json', mode='r', encoding='utf-8') as f:
+#     os.environ['PDF_DECODE_KEY'] = f.read()
     
-with open('./config/xtb-ike-wallet-0a604e129e1a.json', mode='r', encoding='utf-8') as f:
-    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = './config/xtb-ike-wallet-0a604e129e1a.json'
+# with open('./config/xtb-ike-wallet-0a604e129e1a.json', mode='r', encoding='utf-8') as f:
+#     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = './config/xtb-ike-wallet-0a604e129e1a.json'
 
 
-# logging.basicConfig(level=logging.ERROR)
+logging.basicConfig(level=logging.ERROR)
 DOCS = os.environ.get('PDF_DECODE_KEY').replace('"', '')
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 query = f'from:{c.SENDER} subject:{c.SUBJECT} has:attachment filename:{c.SPEC_ATTACHMENT} older_than:{c.OLDER_THAN} newer_than:{c.NEWER_THAN}'
@@ -125,10 +125,10 @@ def download_from_bucket(source_fname, gsbucket, dest_fname):
     bucket = client.bucket(gsbucket)
     blob = bucket.blob(source_fname)
     if blob.exists():
-        print(f'ℹ️ Cloud Storage file object found. Downloading and writing...  {dest_fname}')
+        print(f'⬇️ Cloud Storage file object found. Downloading and writing...  {dest_fname}')
         blob.download_to_filename(dest_fname)
     else:
-        print(f'⬇️ Cloud Storage file object not found. Creating empty file...  {dest_fname}')
+        print(f'ℹ️ Cloud Storage file object not found. Creating empty file...  {dest_fname}')
         write_emails_id_file(set())
 
 def check_credentials():
