@@ -19,6 +19,7 @@ NBP_MID = 'a'
 NBP_ASK_BID = 'c'
 NBP_BASE_REQ = 'https://api.nbp.pl/api/exchangerates/rates/'
 NBP_TMP_CSV = './tmp/nbp.csv'
+NBP_BUCKET_PATH = 'nbp-usdpln-exchange-rates'
 MERGED_DFS_NAMES = [
     'Numer zlecenia',
     'Symbol',
