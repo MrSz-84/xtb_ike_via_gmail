@@ -1,4 +1,4 @@
-import requests, os, datetime, argparse, pandas as pd
+import requests, os, datetime, argparse
 from google.cloud import storage
 from config import consts as c
 
@@ -148,6 +148,7 @@ def main():
     except Exception as e:
         os.remove(c.NBP_TMP_CSV)
         print(f'❌ An error occured during upload to bucket: {e}')
+        return
     os.remove(c.NBP_TMP_CSV)
     
     print('✅ All tasks done, finishing program...') 
