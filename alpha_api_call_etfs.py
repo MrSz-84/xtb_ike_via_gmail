@@ -1,4 +1,4 @@
-import requests, os, datetime, argparse, json
+import requests, os, datetime, argparse, json, pandas as pd
 from google.cloud import storage
 from config import consts as c
 
@@ -7,8 +7,32 @@ with open('./config/xtb-ike-wallet-0a604e129e1a.json', mode='r', encoding='utf-8
 with open(c.ALPHA_API, mode='r', encoding='utf-8') as f:
     os.environ['ALPHA_API_KEY'] = json.load(f).strip('"')
     
+# TODO read local saved json file, and develop ETL for the 4pack
+# TODO TBD if swap requests for the aio http or another async requests module
+
+with open('./tmp/eimi_api.json', mode='r', encoding='utf-8') as f:
+    eimi = json.load(f)
+with open('./tmp/fx_usdpln_api.json', mode='r', encoding='utf-8') as f:
+    fx_usdpln = json.load(f)
+with open('./tmp/igln_api.json', mode='r', encoding='utf-8') as f:
+    igln = json.load(f)
+with open('./tmp/iwda_api.json', mode='r', encoding='utf-8') as f:
+    iwda = json.load(f)
+    
+def parse_fx(api_res):
+    from_symbol = api_res['Meta Data']['2. From Symbol']
+    to_symbol = api_res['Meta Data']['3. To Symbol']
+    pair = from_symbol + to_symbol
+    cols = {'1. open':'open', '2. high':'high', '3. low':'low', '4. close':'close'}
+    fx_df = pd.DataFrame.from_dict(fx_usdpln['Time Series FX (Daily)'], orient='index', columns=cols).reset_index()
+    fx_df.rename(columns=cols, inplace=True)
+    fx_df.rename(columns={'index': 'date'}, inplace=True)
+    fx_df = fx_df.astype({'date': 'datetime64[ns]', 'open': 'Float64', 'high': 'Float64', 'low': 'Float64', 'close': 'Float64'})
+    fx_df = fx_df.assign(**{'from': from_symbol, 'to': to_symbol, 'pair': pair})
+    return fx_df
 
 
+parse_fx(fx_usdpln)
 
 # def validate_dates(dates):
 #     start = datetime.datetime.strptime(dates[0], '%Y-%m-%d')
@@ -138,7 +162,7 @@ with open(c.ALPHA_API, mode='r', encoding='utf-8') as f:
 #     print(f'✅ Upload of the file {fname} to {gsbucket} cloud storage bucket complete.')
 
 def main():
-    print(os.environ['ALPHA_API_KEY'])
+    pass
     
     
     # argparse_logic()
