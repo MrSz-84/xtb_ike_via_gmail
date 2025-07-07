@@ -20,6 +20,14 @@ NBP_ASK_BID = 'c'
 NBP_BASE_REQ = 'https://api.nbp.pl/api/exchangerates/rates/'
 NBP_TMP_CSV = './tmp/nbp.csv'
 NBP_BUCKET_PATH = 'nbp-usdpln-exchange-rates'
+ALPHA_API = './config/alphavantage.json'
+ALPHA_BASE_REQ = 'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol='
+ALPHA_OUTPUT_SIZE = '&outputsize='
+ALPHA_OUTPUT_SIZE_TYPE = 'compact'
+ALPHA_APIKEY_REQ = '&apikey='
+ALPHA_FX_BASE_REQ = 'https://www.alphavantage.co/query?function=FX_DAILY&from_symbol='
+ALPHA_FROM_SYMBOL = 'USD'
+ALPHA_TO_SYMBOL = 'PLN'
 MERGED_DFS_NAMES = [
     'Numer zlecenia',
     'Symbol',
