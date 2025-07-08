@@ -1,4 +1,4 @@
-import requests, os, datetime, argparse, json, pandas as pd
+import requests, os, datetime, argparse, json, time, asyncio, aiofiles
 from google.cloud import storage
 from config import consts as c
 
@@ -7,32 +7,44 @@ with open('./config/xtb-ike-wallet-0a604e129e1a.json', mode='r', encoding='utf-8
 with open(c.ALPHA_API, mode='r', encoding='utf-8') as f:
     os.environ['ALPHA_API_KEY'] = json.load(f).strip('"')
     
-# TODO read local saved json file, and develop ETL for the 4pack
-# TODO TBD if swap requests for the aio http or another async requests module
 
-with open('./tmp/eimi_api.json', mode='r', encoding='utf-8') as f:
-    eimi = json.load(f)
-with open('./tmp/fx_usdpln_api.json', mode='r', encoding='utf-8') as f:
-    fx_usdpln = json.load(f)
-with open('./tmp/igln_api.json', mode='r', encoding='utf-8') as f:
-    igln = json.load(f)
-with open('./tmp/iwda_api.json', mode='r', encoding='utf-8') as f:
-    iwda = json.load(f)
-    
-def parse_fx(api_res):
+# TODO async version of the code - json parsing and ttl async corutine. Slower than synchroneous version. Tests needed.
+
+async def read_json(path):
+    async with aiofiles.open(path, mode='r', encoding='utf-8') as f:
+        contents =  await f.read()
+        return json.loads(contents)
+
+async def parse_fx(api_res):
     from_symbol = api_res['Meta Data']['2. From Symbol']
     to_symbol = api_res['Meta Data']['3. To Symbol']
     pair = from_symbol + to_symbol
-    cols = {'1. open':'open', '2. high':'high', '3. low':'low', '4. close':'close'}
-    fx_df = pd.DataFrame.from_dict(fx_usdpln['Time Series FX (Daily)'], orient='index', columns=cols).reset_index()
-    fx_df.rename(columns=cols, inplace=True)
-    fx_df.rename(columns={'index': 'date'}, inplace=True)
-    fx_df = fx_df.astype({'date': 'datetime64[ns]', 'open': 'Float64', 'high': 'Float64', 'low': 'Float64', 'close': 'Float64'})
-    fx_df = fx_df.assign(**{'from': from_symbol, 'to': to_symbol, 'pair': pair})
-    return fx_df
+    values = 'Time Series FX (Daily)'
+    meta = {'from': from_symbol, 'to': to_symbol, 'pair': pair}
+    return await _parse_frame(api_res[values], meta)
+
+async def parse_equity(api_res):
+    symbol = api_res['Meta Data']['2. Symbol'].replace('.LON', '.UK')
+    values = 'Time Series (Daily)'
+    return await _parse_frame(api_res[values], {'symbol': symbol})
+
+async def _parse_frame(time_series, metadata):
+    dct = {}
+    for k, v in time_series.items():
+        tmp_dct = {vk.split(' ')[1]: vv for vk, vv in v.items()}
+        tmp_dct.update(metadata)
+        dct[k] = tmp_dct
+    return dct
+
+async def parse_all_api_res(api_res, data_type):
+    if data_type == 'fx':
+        return await parse_fx(api_res)
+    else:
+        return await parse_equity(api_res)
 
 
-parse_fx(fx_usdpln)
+
+
 
 # def validate_dates(dates):
 #     start = datetime.datetime.strptime(dates[0], '%Y-%m-%d')
@@ -161,8 +173,16 @@ parse_fx(fx_usdpln)
 #     blob.upload_from_filename(fname)
 #     print(f'✅ Upload of the file {fname} to {gsbucket} cloud storage bucket complete.')
 
-def main():
-    pass
+async def main():
+    start = time.time()
+    files = ['./tmp/eimi_api.json', './tmp/igln_api.json', './tmp/iwda_api.json', './tmp/fx_usdpln_api.json']
+    tasks = [read_json(file) for file in files]
+    results = await asyncio.gather(*tasks)
+    
+    for i, res in enumerate(results):
+        parsed = await parse_all_api_res(res, data_type='etf' if i < 3 else 'fx')
+    stop = time.time()
+    print('Duration: ', stop - start)
     
     
     # argparse_logic()
@@ -186,4 +206,4 @@ def main():
     # print('✅ All tasks done, finishing program...') 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
