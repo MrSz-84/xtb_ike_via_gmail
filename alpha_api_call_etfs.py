@@ -9,26 +9,28 @@ with open(c.ALPHA_API, mode='r', encoding='utf-8') as f:
     
 
 # TODO async version of the code - json parsing and ttl async corutine. Slower than synchroneous version. Tests needed.
+# TODO Make fx branch of creating csvs.
+# TODO create mechanism for separating what was added to the db and what wasn't
 
-async def read_json(path):
-    async with aiofiles.open(path, mode='r', encoding='utf-8') as f:
-        contents =  await f.read()
+def read_json(path):
+    with open(path, mode='r', encoding='utf-8') as f:
+        contents =  f.read()
         return json.loads(contents)
 
-async def parse_fx(api_res):
+def parse_fx(api_res):
     from_symbol = api_res['Meta Data']['2. From Symbol']
     to_symbol = api_res['Meta Data']['3. To Symbol']
     pair = from_symbol + to_symbol
     values = 'Time Series FX (Daily)'
     meta = {'from': from_symbol, 'to': to_symbol, 'pair': pair}
-    return await _parse_frame(api_res[values], meta)
+    return _parse_frame(api_res[values], meta)
 
-async def parse_equity(api_res):
+def parse_equity(api_res):
     symbol = api_res['Meta Data']['2. Symbol'].replace('.LON', '.UK')
     values = 'Time Series (Daily)'
-    return await _parse_frame(api_res[values], {'symbol': symbol})
+    return _parse_frame(api_res[values], {'symbol': symbol})
 
-async def _parse_frame(time_series, metadata):
+def _parse_frame(time_series, metadata):
     dct = {}
     for k, v in time_series.items():
         tmp_dct = {vk.split(' ')[1]: vv for vk, vv in v.items()}
@@ -36,11 +38,28 @@ async def _parse_frame(time_series, metadata):
         dct[k] = tmp_dct
     return dct
 
-async def parse_all_api_res(api_res, data_type):
+def parse_all_api_res(api_res, data_type):
     if data_type == 'fx':
-        return await parse_fx(api_res)
+        return parse_fx(api_res)
     else:
-        return await parse_equity(api_res)
+        return parse_equity(api_res)
+
+def create_csv(batch: list[dict[dict]]):
+    if os.path.exists(c.ALPHA_EQUITY_CSV):
+        os.remove(c.ALPHA_EQUITY_CSV)
+    header_equity = 'date,open,high,low,close,volume,symbol\n'
+    header_fx = ''
+    for i, equity in enumerate(batch):
+        if i < len(batch) - 1:
+            with open(c.ALPHA_EQUITY_CSV, mode='a') as f:
+                if i == 0:
+                    f.write(header_equity)
+                for day, entry in equity.items():
+                    line = f'{day},' + ','.join(str(v) for v in entry.values()) + '\n'
+                    print(line, end='')
+                    f.write(line)
+        else:
+            print('not yet done')
 
 
 
@@ -173,14 +192,16 @@ async def parse_all_api_res(api_res, data_type):
 #     blob.upload_from_filename(fname)
 #     print(f'✅ Upload of the file {fname} to {gsbucket} cloud storage bucket complete.')
 
-async def main():
+def main():
     start = time.time()
     files = ['./tmp/eimi_api.json', './tmp/igln_api.json', './tmp/iwda_api.json', './tmp/fx_usdpln_api.json']
     tasks = [read_json(file) for file in files]
-    results = await asyncio.gather(*tasks)
+    # results = tasks
     
-    for i, res in enumerate(results):
-        parsed = await parse_all_api_res(res, data_type='etf' if i < 3 else 'fx')
+    
+    # for i, res in enumerate(tasks):
+    parsed = [parse_all_api_res(res, data_type='etf' if i < 3 else 'fx') for i, res in enumerate(tasks)]
+    create_csv(parsed)
     stop = time.time()
     print('Duration: ', stop - start)
     
@@ -206,4 +227,4 @@ async def main():
     # print('✅ All tasks done, finishing program...') 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
