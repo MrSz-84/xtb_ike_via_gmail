@@ -28,6 +28,8 @@ ALPHA_APIKEY_REQ = '&apikey='
 ALPHA_FX_BASE_REQ = 'https://www.alphavantage.co/query?function=FX_DAILY&from_symbol='
 ALPHA_FROM_SYMBOL = 'USD'
 ALPHA_TO_SYMBOL = 'PLN'
+ALPHA_EQUITY_CSV = './tmp/equity.csv'
+ALPHA_FX_CSV = './tmp/fx.csv'
 MERGED_DFS_NAMES = [
     'Numer zlecenia',
     'Symbol',
