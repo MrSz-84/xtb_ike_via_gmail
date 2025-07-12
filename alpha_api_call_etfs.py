@@ -47,19 +47,25 @@ def parse_all_api_res(api_res, data_type):
 def create_csv(batch: list[dict[dict]]):
     if os.path.exists(c.ALPHA_EQUITY_CSV):
         os.remove(c.ALPHA_EQUITY_CSV)
+    if os.path.exists(c.ALPHA_FX_CSV):
+        os.remove(c.ALPHA_FX_CSV)
     header_equity = 'date,open,high,low,close,volume,symbol\n'
-    header_fx = ''
+    header_fx = 'date,open,high,low,close,from,to,pair\n'
     for i, equity in enumerate(batch):
         if i < len(batch) - 1:
-            with open(c.ALPHA_EQUITY_CSV, mode='a') as f:
+            with open(c.ALPHA_EQUITY_CSV, mode='a', encoding='utf-8') as f:
                 if i == 0:
                     f.write(header_equity)
                 for day, entry in equity.items():
                     line = f'{day},' + ','.join(str(v) for v in entry.values()) + '\n'
-                    print(line, end='')
                     f.write(line)
         else:
-            print('not yet done')
+            with open(c.ALPHA_FX_CSV, mode='a', encoding='utf-8') as f:
+                f.write(header_fx)
+                for day, entry in equity.items():
+                    line = f'{day},' + ','.join(str(v) for v in entry.values()) +'\n'
+                    print(line, end='')
+                    f.write(line)
 
 
 
