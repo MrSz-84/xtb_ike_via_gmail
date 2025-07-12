@@ -1,4 +1,4 @@
-import requests, os, datetime, argparse, json, time, asyncio, aiofiles
+import requests, os, datetime, argparse, json, time, asyncio
 from google.cloud import storage
 from config import consts as c
 
@@ -8,49 +8,55 @@ with open(c.ALPHA_API, mode='r', encoding='utf-8') as f:
     os.environ['ALPHA_API_KEY'] = json.load(f).strip('"')
     
 
-# TODO async version of the code - json parsing and ttl async corutine. Slower than synchroneous version. Tests needed.
-# TODO Make fx branch of creating csvs.
-# TODO create mechanism for separating what was added to the db and what wasn't
+# TODO async version of the code - json parsing and ttl async corutine. Slower than synchroneous version. Tests needed for real API calls instead of reading from SSD.
+# TODO make temp files cleaning function. and pass it every time something needs to be removed.
+# TODO Make a mechanism for downloading min_max_dates from cloud storage, and also a mechanism for uploading it to the cloud
+# TODO Make a mechanism for uploading equity and fx csv to the cloud
 
 def read_json(path):
     with open(path, mode='r', encoding='utf-8') as f:
         contents =  f.read()
         return json.loads(contents)
 
-def parse_fx(api_res):
+def parse_fx(api_res, min_max):
     from_symbol = api_res['Meta Data']['2. From Symbol']
     to_symbol = api_res['Meta Data']['3. To Symbol']
     pair = from_symbol + to_symbol
     values = 'Time Series FX (Daily)'
-    meta = {'from': from_symbol, 'to': to_symbol, 'pair': pair}
-    return _parse_frame(api_res[values], meta)
+    meta = {'from': from_symbol, 'to': to_symbol, 'symbol': pair}
+    return _parse_frame(api_res[values], meta, min_max)
 
-def parse_equity(api_res):
+def parse_equity(api_res, min_max):
     symbol = api_res['Meta Data']['2. Symbol'].replace('.LON', '.UK')
     values = 'Time Series (Daily)'
-    return _parse_frame(api_res[values], {'symbol': symbol})
+    return _parse_frame(api_res[values], {'symbol': symbol}, min_max)
 
-def _parse_frame(time_series, metadata):
+def _parse_frame(time_series, metadata, min_max):
     dct = {}
     for k, v in time_series.items():
         tmp_dct = {vk.split(' ')[1]: vv for vk, vv in v.items()}
         tmp_dct.update(metadata)
-        dct[k] = tmp_dct
+        if k >= min_max[tmp_dct['symbol']]['min_date'] and k <= min_max[tmp_dct['symbol']]['max_date']:
+            continue
+        else:
+            dct[k] = tmp_dct
     return dct
 
-def parse_all_api_res(api_res, data_type):
+def parse_all_api_res(api_res, data_type, min_max):
     if data_type == 'fx':
-        return parse_fx(api_res)
+        return parse_fx(api_res, min_max)
     else:
-        return parse_equity(api_res)
+        return parse_equity(api_res, min_max)
 
 def create_csv(batch: list[dict[dict]]):
+    new_min_max = {}
+    ## TODO delete those two checks when proper logic in main() will be done
     if os.path.exists(c.ALPHA_EQUITY_CSV):
         os.remove(c.ALPHA_EQUITY_CSV)
     if os.path.exists(c.ALPHA_FX_CSV):
         os.remove(c.ALPHA_FX_CSV)
     header_equity = 'date,open,high,low,close,volume,symbol\n'
-    header_fx = 'date,open,high,low,close,from,to,pair\n'
+    header_fx = 'date,open,high,low,close,from,to,symbol\n'
     for i, equity in enumerate(batch):
         if i < len(batch) - 1:
             with open(c.ALPHA_EQUITY_CSV, mode='a', encoding='utf-8') as f:
@@ -59,17 +65,52 @@ def create_csv(batch: list[dict[dict]]):
                 for day, entry in equity.items():
                     line = f'{day},' + ','.join(str(v) for v in entry.values()) + '\n'
                     f.write(line)
+            new_min_max[list(equity.values())[0]['symbol']] = {'min_date': min(equity.keys()), 'max_date': max(equity.keys())}
         else:
             with open(c.ALPHA_FX_CSV, mode='a', encoding='utf-8') as f:
                 f.write(header_fx)
                 for day, entry in equity.items():
                     line = f'{day},' + ','.join(str(v) for v in entry.values()) +'\n'
-                    print(line, end='')
                     f.write(line)
+            new_min_max[list(equity.values())[0]['symbol']] = {'min_date': min(equity.keys()), 'max_date': max(equity.keys())}
+    return new_min_max
 
+def read_min_max(path):
+    with open(path, mode='r', encoding='utf-8') as f:
+        header = f.readline().strip().split(',')
+        min_max = {
+            line[0]: {k: v for k, v in zip(header[1:], line[1:])} 
+            for line in (l.strip().split(',') for l in f)
+            }
+    return min_max
 
+def min_max_compare(old_min_max, new_min_max):
+    swapped_min_max = old_min_max.copy()
+    symbols = [s for s in old_min_max]
+    for symbol in symbols:
+        if new_min_max[symbol]['min_date'] < old_min_max[symbol]['min_date']:
+            swapped_min_max[symbol]['min_date'] = new_min_max[symbol]['min_date']
+        if new_min_max[symbol]['max_date'] > old_min_max[symbol]['max_date']:
+            swapped_min_max[symbol]['max_date'] = new_min_max[symbol]['max_date']
+    return write_min_max(swapped_min_max)
 
+def write_min_max(data):
+    print(data)
+    header = 'symbo,min_date,max_date\n'
+    with open(c.ALPHA_MIN_MAX, mode='w', encoding='utf-8') as f:
+        f.write(header)
+        for symbol, dates in data.items():
+            line = f'{symbol},' + ','.join(date for date in dates.values()) + '\n'
+            f.write(line)
 
+def is_parsed_empty(parsed):
+    is_empty = []
+    for elem in parsed:
+        if len(elem) == 0:
+            is_empty.append(True)
+        else:
+            is_empty.append(False)
+    return any(is_empty)
 
 # def validate_dates(dates):
 #     start = datetime.datetime.strptime(dates[0], '%Y-%m-%d')
@@ -200,14 +241,25 @@ def create_csv(batch: list[dict[dict]]):
 
 def main():
     start = time.time()
+    min_max = read_min_max(c.ALPHA_MIN_MAX)
     files = ['./tmp/eimi_api.json', './tmp/igln_api.json', './tmp/iwda_api.json', './tmp/fx_usdpln_api.json']
     tasks = [read_json(file) for file in files]
     # results = tasks
     
     
     # for i, res in enumerate(tasks):
-    parsed = [parse_all_api_res(res, data_type='etf' if i < 3 else 'fx') for i, res in enumerate(tasks)]
-    create_csv(parsed)
+    parsed = [parse_all_api_res(res, data_type='etf' if i < 3 else 'fx', min_max=min_max) for i, res in enumerate(tasks)]
+    if is_parsed_empty(parsed):
+        print('empty')
+        print('make some cleaning')
+        return
+
+        
+    new_min_max = create_csv(parsed)
+    old_min_max = read_min_max(c.ALPHA_MIN_MAX)
+    # min_max_compare(old_min_max, new_min_max)
+    
+    
     stop = time.time()
     print('Duration: ', stop - start)
     
