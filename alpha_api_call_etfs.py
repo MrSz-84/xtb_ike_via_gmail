@@ -9,9 +9,7 @@ with open(c.ALPHA_API, mode='r', encoding='utf-8') as f:
 
 
 # TODO async version of the code - json parsing and ttl async corutine. Slower than synchroneous version. Tests needed for real API calls instead of reading from SSD.
-# TODO Make a mechanism for downloading min_max_dates from cloud storage, and also a mechanism for uploading it to the cloud
 # TODO Make a mechanism for uploading equity and fx csv to the cloud
-# TODO Rethink the way of gathering min_max_dates for symbols, and how to add new ones.
 
 def get_symbols(responses):
     eq = 0
@@ -254,39 +252,28 @@ def download_from_bucket(source_fname, gsbucket, dest_fname):
 #             return [{'code': 'empty', 'rates': f'{r.status_code} {r.reason}'}, {'code': 'empty', 'rates': f'{r.status_code} {r.reason}'}]
 #     return temp_data
 
-# def upload_to_bucket(fname, gsbucket, dest_fname):
-#     dest_fname = dest_fname.replace('./tmp/','')
-#     client = storage.Client()
-#     bucket = client.bucket(gsbucket)
-#     blob = bucket.blob(dest_fname)
-#     blob.upload_from_filename(fname)
-#     print(f'✅ Upload of the file {fname} to {gsbucket} cloud storage bucket complete.')
-
 def main():
     start = time.time()
     files = ['./tmp/eimi_api.json', './tmp/igln_api.json', './tmp/iwda_api.json', './tmp/fx_usdpln_api.json', './tmp/fx_eurpln_api.json']
     tasks = [read_json(file) for file in files]
     get_symbols(tasks)
+    # TODO Uncomment download from bucket, and delete create_boilerplate...()
+    # download_from_bucket(c.ALPHA_MIN_MAX, c.MAIL_IDS_PATH, c.ALPHA_MIN_MAX)
+    create_boilerplate_min_max_file(c.ALPHA_SYMBOLS)
     # results = tasks
     
-    create_boilerplate_min_max_file(c.ALPHA_SYMBOLS)
     min_max = read_min_max(c.ALPHA_MIN_MAX)
     
     # for i, res in enumerate(tasks):
     parsed = [parse_all_api_res(res, data_type='etf' if i < c.ALPHA_EQ else 'fx', min_max=min_max) for i, res in enumerate(tasks)]
     if is_parsed_empty(parsed):
-        print('empty')
-        print('make some cleaning')
+        print(f'ℹ️ No new data was found after parsing API calls. Cleaning up and shutting down...')
+        files_cleanup([c.ALPHA_EQUITY_CSV, c.ALPHA_FX_CSV, c.ALPHA_MIN_MAX])
         return
     
     new_min_max = create_csv(parsed)
     old_min_max = read_min_max(c.ALPHA_MIN_MAX)
     min_max_compare(old_min_max, new_min_max)
-    
-    
-    stop = time.time()
-    print('Duration: ', stop - start)
-    
     
     # argparse_logic()
     # req_pair = create_requests_url(base_req=c.NBP_BASE_REQ, type=os.environ['NBP_REQ_TYPE'])
@@ -298,15 +285,30 @@ def main():
     # output = create_data_struct(input_)
     # create_csv(output)
     
-    # try:
-    #     upload_to_bucket(c.NBP_TMP_CSV, c.NBP_BUCKET_PATH, c.NBP_TMP_CSV)
-    # except Exception as e:
-    #     os.remove(c.NBP_TMP_CSV)
-    #     print(f'❌ An error occured during upload to bucket: {e}')
-    #     return
-    # os.remove(c.NBP_TMP_CSV)
+    try:
+        upload_to_bucket(c.ALPHA_EQUITY_CSV, c.ALPHA_EQ_BUCKET, c.ALPHA_EQUITY_CSV)
+    except Exception as e:
+        files_cleanup([c.ALPHA_EQUITY_CSV, c.ALPHA_FX_CSV, c.ALPHA_MIN_MAX])
+        print(f'❌ An error occured during upload file {c.ALPHA_EQUITY_CSV} to bucket: {e}')
+        return
+    try:
+        upload_to_bucket(c.ALPHA_FX_CSV, c.ALPHA_FX_BUCKET, c.ALPHA_FX_CSV)
+    except Exception as e:
+        files_cleanup([c.ALPHA_EQUITY_CSV, c.ALPHA_FX_CSV, c.ALPHA_MIN_MAX])
+        print(f'❌ An error occured during upload file {c.ALPHA_FX_CSV} to bucket: {e}')
+        return
+    try:
+        upload_to_bucket(c.ALPHA_MIN_MAX, c.ALPHA_MIN_MAX_BUCKET, c.ALPHA_MIN_MAX)
+    except Exception as e:
+        files_cleanup([c.ALPHA_EQUITY_CSV, c.ALPHA_FX_CSV, c.ALPHA_MIN_MAX])
+        print(f'❌ An error occured during upload file {c.ALPHA_MIN_MAX} to bucket: {e}')
+        return
     
-    # print('✅ All tasks done, finishing program...') 
+    stop = time.time()
+    print('Duration: ', stop - start)
+    
+    files_cleanup([c.ALPHA_EQUITY_CSV, c.ALPHA_FX_CSV, c.ALPHA_MIN_MAX])
+    print('✅ All tasks done, finishing program...') 
 
 if __name__ == "__main__":
     main()
