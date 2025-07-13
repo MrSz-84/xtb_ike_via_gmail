@@ -9,7 +9,6 @@ with open(c.ALPHA_API, mode='r', encoding='utf-8') as f:
     
 
 # TODO async version of the code - json parsing and ttl async corutine. Slower than synchroneous version. Tests needed for real API calls instead of reading from SSD.
-# TODO make temp files cleaning function. and pass it every time something needs to be removed.
 # TODO Make a mechanism for downloading min_max_dates from cloud storage, and also a mechanism for uploading it to the cloud
 # TODO Make a mechanism for uploading equity and fx csv to the cloud
 
@@ -47,14 +46,15 @@ def parse_all_api_res(api_res, data_type, min_max):
         return parse_fx(api_res, min_max)
     else:
         return parse_equity(api_res, min_max)
+        
+def files_cleanup(paths):
+    for path in paths:
+        if os.path.exists(path):
+            os.remove(path)
 
 def create_csv(batch: list[dict[dict]]):
     new_min_max = {}
-    ## TODO delete those two checks when proper logic in main() will be done
-    if os.path.exists(c.ALPHA_EQUITY_CSV):
-        os.remove(c.ALPHA_EQUITY_CSV)
-    if os.path.exists(c.ALPHA_FX_CSV):
-        os.remove(c.ALPHA_FX_CSV)
+    files_cleanup((c.ALPHA_EQUITY_CSV, c.ALPHA_FX_CSV))
     header_equity = 'date,open,high,low,close,volume,symbol\n'
     header_fx = 'date,open,high,low,close,from,to,symbol\n'
     for i, equity in enumerate(batch):
