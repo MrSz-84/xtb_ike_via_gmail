@@ -34,6 +34,9 @@ ALPHA_MIN_MAX = './tmp/min_max.csv'
 ALPHA_SYMBOLS = []
 ALPHA_FX = 0
 ALPHA_EQ = 0
+ALPHA_FX_BUCKET = 'alphavantage-fx-exchange-rates'
+ALPHA_EQ_BUCKET = 'alphavantage-equit-quotes'
+ALPHA_MIN_MAX_BUCKET = 'alphavantage-min-max-dates'
 MERGED_DFS_NAMES = [
     'Numer zlecenia',
     'Symbol',
