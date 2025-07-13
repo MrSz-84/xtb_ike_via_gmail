@@ -1,4 +1,4 @@
-import requests, os, datetime, argparse, json, time, asyncio
+import requests, os, copy, datetime, argparse, json, time, asyncio
 from google.cloud import storage
 from config import consts as c
 
@@ -6,17 +6,35 @@ with open('./config/xtb-ike-wallet-0a604e129e1a.json', mode='r', encoding='utf-8
     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = './config/xtb-ike-wallet-0a604e129e1a.json'
 with open(c.ALPHA_API, mode='r', encoding='utf-8') as f:
     os.environ['ALPHA_API_KEY'] = json.load(f).strip('"')
-    
+
 
 # TODO async version of the code - json parsing and ttl async corutine. Slower than synchroneous version. Tests needed for real API calls instead of reading from SSD.
 # TODO Make a mechanism for downloading min_max_dates from cloud storage, and also a mechanism for uploading it to the cloud
 # TODO Make a mechanism for uploading equity and fx csv to the cloud
+# TODO Rethink the way of gathering min_max_dates for symbols, and how to add new ones.
 
+def get_symbols(responses):
+    eq = 0
+    fx = 0
+    counter = 0
+    for response in responses:
+        counter += 1
+        if response['Meta Data']['1. Information'].startswith('Forex'):
+            fx += 1
+            pair = response['Meta Data']['2. From Symbol'] + response['Meta Data']['3. To Symbol']
+            c.ALPHA_SYMBOLS.append(pair)
+        else:
+            eq += 1
+            symbol = response['Meta Data']['2. Symbol'].replace('.LON', '.UK')
+            c.ALPHA_SYMBOLS.append(symbol)
+    c.ALPHA_EQ = eq
+    c.ALPHA_FX = fx
+    
 def read_json(path):
     with open(path, mode='r', encoding='utf-8') as f:
         contents =  f.read()
         return json.loads(contents)
-
+    
 def parse_fx(api_res, min_max):
     from_symbol = api_res['Meta Data']['2. From Symbol']
     to_symbol = api_res['Meta Data']['3. To Symbol']
@@ -24,12 +42,12 @@ def parse_fx(api_res, min_max):
     values = 'Time Series FX (Daily)'
     meta = {'from': from_symbol, 'to': to_symbol, 'symbol': pair}
     return _parse_frame(api_res[values], meta, min_max)
-
+    
 def parse_equity(api_res, min_max):
     symbol = api_res['Meta Data']['2. Symbol'].replace('.LON', '.UK')
     values = 'Time Series (Daily)'
     return _parse_frame(api_res[values], {'symbol': symbol}, min_max)
-
+    
 def _parse_frame(time_series, metadata, min_max):
     dct = {}
     for k, v in time_series.items():
@@ -40,7 +58,7 @@ def _parse_frame(time_series, metadata, min_max):
         else:
             dct[k] = tmp_dct
     return dct
-
+    
 def parse_all_api_res(api_res, data_type, min_max):
     if data_type == 'fx':
         return parse_fx(api_res, min_max)
@@ -51,14 +69,14 @@ def files_cleanup(paths):
     for path in paths:
         if os.path.exists(path):
             os.remove(path)
-
+    
 def create_csv(batch: list[dict[dict]]):
     new_min_max = {}
     files_cleanup((c.ALPHA_EQUITY_CSV, c.ALPHA_FX_CSV))
     header_equity = 'date,open,high,low,close,volume,symbol\n'
     header_fx = 'date,open,high,low,close,from,to,symbol\n'
     for i, equity in enumerate(batch):
-        if i < len(batch) - 1:
+        if i < len(batch) - c.ALPHA_FX:
             with open(c.ALPHA_EQUITY_CSV, mode='a', encoding='utf-8') as f:
                 if i == 0:
                     f.write(header_equity)
@@ -68,13 +86,14 @@ def create_csv(batch: list[dict[dict]]):
             new_min_max[list(equity.values())[0]['symbol']] = {'min_date': min(equity.keys()), 'max_date': max(equity.keys())}
         else:
             with open(c.ALPHA_FX_CSV, mode='a', encoding='utf-8') as f:
-                f.write(header_fx)
+                if i == len(batch) - c.ALPHA_FX:
+                    f.write(header_fx)
                 for day, entry in equity.items():
                     line = f'{day},' + ','.join(str(v) for v in entry.values()) +'\n'
                     f.write(line)
             new_min_max[list(equity.values())[0]['symbol']] = {'min_date': min(equity.keys()), 'max_date': max(equity.keys())}
     return new_min_max
-
+    
 def read_min_max(path):
     with open(path, mode='r', encoding='utf-8') as f:
         header = f.readline().strip().split(',')
@@ -83,9 +102,9 @@ def read_min_max(path):
             for line in (l.strip().split(',') for l in f)
             }
     return min_max
-
+    
 def min_max_compare(old_min_max, new_min_max):
-    swapped_min_max = old_min_max.copy()
+    swapped_min_max = copy.deepcopy(old_min_max)
     symbols = [s for s in old_min_max]
     for symbol in symbols:
         if new_min_max[symbol]['min_date'] < old_min_max[symbol]['min_date']:
@@ -93,16 +112,15 @@ def min_max_compare(old_min_max, new_min_max):
         if new_min_max[symbol]['max_date'] > old_min_max[symbol]['max_date']:
             swapped_min_max[symbol]['max_date'] = new_min_max[symbol]['max_date']
     return write_min_max(swapped_min_max)
-
+    
 def write_min_max(data):
-    print(data)
-    header = 'symbo,min_date,max_date\n'
+    header = 'symbol,min_date,max_date\n'
     with open(c.ALPHA_MIN_MAX, mode='w', encoding='utf-8') as f:
         f.write(header)
         for symbol, dates in data.items():
             line = f'{symbol},' + ','.join(date for date in dates.values()) + '\n'
             f.write(line)
-
+    
 def is_parsed_empty(parsed):
     is_empty = []
     for elem in parsed:
@@ -111,6 +129,37 @@ def is_parsed_empty(parsed):
         else:
             is_empty.append(False)
     return any(is_empty)
+    
+def create_boilerplate_min_max_file(symbols):
+    dates = {'min_date': '2025-01-01', 'max_date': '2025-01-31'}
+    header = 'symbol,min_date,max_date\n'
+    with open(c.ALPHA_MIN_MAX, mode='w', encoding='utf-8') as f:
+        f.write(header)
+        for symbol in symbols:
+            line = f'{symbol},{dates['min_date']},{dates['max_date']}\n'
+            f.write(line)
+    
+def upload_to_bucket(fname, gsbucket, dest_fname):
+    dest_fname = dest_fname.replace('./tmp/','')
+    client = storage.Client()
+    bucket = client.bucket(gsbucket)
+    blob = bucket.blob(dest_fname)
+    blob.upload_from_filename(fname)
+    print(f'⬆️ Upload of the file {fname} to {gsbucket} cloud storage bucket complete.')
+    
+def download_from_bucket(source_fname, gsbucket, dest_fname):
+    source_fname = dest_fname.replace('./tmp/','')
+    client = storage.Client()
+    bucket = client.bucket(gsbucket)
+    blob = bucket.blob(source_fname)
+    if blob.exists():
+        print(f'⬇️ Cloud Storage file object found. Downloading and writing...  {dest_fname}')
+        blob.download_to_filename(dest_fname)
+    else:
+        print(f'ℹ️ Cloud Storage file object not found. Creating empty file...  {dest_fname}')
+        create_boilerplate_min_max_file(c.ALPHA_SYMBOLS)
+
+
 
 # def validate_dates(dates):
 #     start = datetime.datetime.strptime(dates[0], '%Y-%m-%d')
@@ -205,32 +254,6 @@ def is_parsed_empty(parsed):
 #             return [{'code': 'empty', 'rates': f'{r.status_code} {r.reason}'}, {'code': 'empty', 'rates': f'{r.status_code} {r.reason}'}]
 #     return temp_data
 
-# def create_data_struct(input_data):
-#     output_lst = []
-#     currency = input_data[0]['code']
-#     for items in zip(input_data[0]['rates'], input_data[1]['rates']):
-#         dct = {}
-#         dct['date'] = items[0]['effectiveDate']
-#         dct['currency'] = currency
-#         dct['mid'] = items[0]['mid']
-#         dct['ask'] = items[1]['ask']
-#         dct['bid'] = items[1]['bid']
-#         output_lst.append(dct)
-#     return output_lst
-
-# def create_csv(to_write):
-#     header = 'date,currency,mid,ask,bid\n'
-#     with open(c.NBP_TMP_CSV, mode='w+') as f:
-#         f.write(header)
-#         for entry in to_write:
-#             line = ''
-#             line += f'{entry['date']},'
-#             line += f'{entry['currency']},'
-#             line += f'{entry['mid']},'
-#             line += f'{entry['ask']},'
-#             line += f'{entry['bid']}\n'
-#             f.write(line)
-
 # def upload_to_bucket(fname, gsbucket, dest_fname):
 #     dest_fname = dest_fname.replace('./tmp/','')
 #     client = storage.Client()
@@ -241,23 +264,24 @@ def is_parsed_empty(parsed):
 
 def main():
     start = time.time()
-    min_max = read_min_max(c.ALPHA_MIN_MAX)
-    files = ['./tmp/eimi_api.json', './tmp/igln_api.json', './tmp/iwda_api.json', './tmp/fx_usdpln_api.json']
+    files = ['./tmp/eimi_api.json', './tmp/igln_api.json', './tmp/iwda_api.json', './tmp/fx_usdpln_api.json', './tmp/fx_eurpln_api.json']
     tasks = [read_json(file) for file in files]
+    get_symbols(tasks)
     # results = tasks
     
+    create_boilerplate_min_max_file(c.ALPHA_SYMBOLS)
+    min_max = read_min_max(c.ALPHA_MIN_MAX)
     
     # for i, res in enumerate(tasks):
-    parsed = [parse_all_api_res(res, data_type='etf' if i < 3 else 'fx', min_max=min_max) for i, res in enumerate(tasks)]
+    parsed = [parse_all_api_res(res, data_type='etf' if i < c.ALPHA_EQ else 'fx', min_max=min_max) for i, res in enumerate(tasks)]
     if is_parsed_empty(parsed):
         print('empty')
         print('make some cleaning')
         return
-
-        
+    
     new_min_max = create_csv(parsed)
     old_min_max = read_min_max(c.ALPHA_MIN_MAX)
-    # min_max_compare(old_min_max, new_min_max)
+    min_max_compare(old_min_max, new_min_max)
     
     
     stop = time.time()
