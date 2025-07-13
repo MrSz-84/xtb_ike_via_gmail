@@ -31,6 +31,9 @@ ALPHA_TO_SYMBOL = 'PLN'
 ALPHA_EQUITY_CSV = './tmp/equity.csv'
 ALPHA_FX_CSV = './tmp/fx.csv'
 ALPHA_MIN_MAX = './tmp/min_max.csv'
+ALPHA_SYMBOLS = []
+ALPHA_FX = 0
+ALPHA_EQ = 0
 MERGED_DFS_NAMES = [
     'Numer zlecenia',
     'Symbol',
