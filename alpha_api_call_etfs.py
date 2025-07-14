@@ -6,10 +6,11 @@ with open('./config/xtb-ike-wallet-0a604e129e1a.json', mode='r', encoding='utf-8
     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = './config/xtb-ike-wallet-0a604e129e1a.json'
 with open(c.ALPHA_API, mode='r', encoding='utf-8') as f:
     os.environ['ALPHA_API_KEY'] = json.load(f).strip('"')
-
+os.environ['OUTPUT_SIZE_TYPE'] = c.ALPHA_OUTPUT_SIZE_TYPE
 
 # TODO async version of the code - json parsing and ttl async corutine. Slower than synchroneous version. Tests needed for real API calls instead of reading from SSD.
-# TODO Make a mechanism for uploading equity and fx csv to the cloud
+# TODO Make mechanism for creating scailable api call links
+# TODO build api calls function one for sync, and other for async for comparison.
 
 def get_symbols(responses):
     eq = 0
@@ -20,11 +21,11 @@ def get_symbols(responses):
         if response['Meta Data']['1. Information'].startswith('Forex'):
             fx += 1
             pair = response['Meta Data']['2. From Symbol'] + response['Meta Data']['3. To Symbol']
-            c.ALPHA_SYMBOLS.append(pair)
+            c.ALPHA_TICKER_SYMBOLS.append(pair)
         else:
             eq += 1
             symbol = response['Meta Data']['2. Symbol'].replace('.LON', '.UK')
-            c.ALPHA_SYMBOLS.append(symbol)
+            c.ALPHA_TICKER_SYMBOLS.append(symbol)
     c.ALPHA_EQ = eq
     c.ALPHA_FX = fx
     
@@ -155,8 +156,7 @@ def download_from_bucket(source_fname, gsbucket, dest_fname):
         blob.download_to_filename(dest_fname)
     else:
         print(f'ℹ️ Cloud Storage file object not found. Creating empty file...  {dest_fname}')
-        create_boilerplate_min_max_file(c.ALPHA_SYMBOLS)
-
+        create_boilerplate_min_max_file(c.ALPHA_TICKER_SYMBOLS)
 
 
 # def validate_dates(dates):
@@ -211,55 +211,57 @@ def download_from_bucket(source_fname, gsbucket, dest_fname):
 #     os.environ['NBP_START_DATE'] = args.dates[0]
 #     os.environ['NBP_END_DATE'] = args.dates[1]
 
-# def create_requests_url(base_req, type='last'):
-#     if type == 'last':
-#         start = (datetime.date.today() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
-#         stop = (datetime.date.today() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
-#         # start = datetime.date.today().strftime('%Y-%m-%d')
-#         # stop = datetime.date.today().strftime('%Y-%m-%d')
-#         mid = f'{base_req}{c.NBP_MID}/usd/{start}/{stop}/?format=json'.lower()
-#         ask_bid = f'{base_req}{c.NBP_ASK_BID}/usd/{start}/{stop}/?format=json'.lower()
-#         return mid, ask_bid
-#     else:
-#         start = os.environ['NBP_START_DATE']
-#         stop = os.environ['NBP_END_DATE']
-#         mid = f'{base_req}{c.NBP_MID}/usd/{start}/{stop}/?format=json'.lower()
-#         ask_bid = f'{base_req}{c.NBP_ASK_BID}/usd/{start}/{stop}/?format=json'.lower()
-#         return mid, ask_bid
+def get_data(url):
+    r = requests.get(url)
+    if r.status_code == 200:
+        return r.json()
+    elif r.status_code == 404:
+        print(f'API call for mid raiting returned {r.status_code}.')
+        exit()
+    elif r.status_code == 400:
+        print(f'API call for mid raiting returned {r.status_code}.')
+        exit()
 
-# def get_data(pair):
-#     temp_data = []
-#     count = 1
-#     for req in pair:
-#         r = requests.get(req)
-#         if r.status_code == 200:
-#             count += 1
-#             temp_data.append(r.json())
-            
-#         elif r.status_code == 404:
-#             if count == 1:
-#                 print(f'API call for mid raiting returned {r.status_code}.')
-#             else:
-#                 print(f'API call for ask & bid raitings returned {r.status_code}.')
-#             print(f'Response text: {r.status_code} {r.reason}')
-#             return [{'code': 'empty', 'rates': f'{r.status_code} {r.reason}'}, {'code': 'empty', 'rates': f'{r.status_code} {r.reason}'}]
-#         elif r.status_code == 400:
-#             if count == 1:
-#                 print(f'API call for mid raiting returned {r.status_code}.')
-#             else:
-#                 print(f'API call for ask % bid raitings returned {r.status_code}.')
-#             print(f'Response text: {r.status_code} {r.reason}')
-#             return [{'code': 'empty', 'rates': f'{r.status_code} {r.reason}'}, {'code': 'empty', 'rates': f'{r.status_code} {r.reason}'}]
-#     return temp_data
+def create_fx_url(pair, base_req):
+    from_s = pair[:3]
+    to_s = pair[3:]
+    r = base_req + c.ALPHA_FX_REQ_FROM_SYMBOL + from_s + c.ALPHA_FX_REQ_TO_SYMBOL \
+        + to_s + c.ALPHA_OUTPUT_SIZE + os.environ['OUTPUT_SIZE_TYPE'] \
+        + c.ALPHA_APIKEY_REQ + os.environ['ALPHA_API_KEY']
+    return r
+
+def create_eq_url(ticker, base_req):
+    r = base_req + c.ALPHA_EQ_SYMBOL_REQ + ticker \
+        + c.ALPHA_OUTPUT_SIZE + os.environ['OUTPUT_SIZE_TYPE'] \
+        + c.ALPHA_APIKEY_REQ + os.environ['ALPHA_API_KEY']
+    return r
+
+def create_requests_lst(base_req, symbols):
+    requests_lst = []
+    for symbol, stype in symbols.items():
+        if stype == 'fx' and len(symbol) == 6:
+            requests_lst.append(create_fx_url(symbol, base_req[stype]))
+        else:
+            requests_lst.append(create_eq_url(symbol, base_req[stype]))
+    return requests_lst
+
+
 
 def main():
     start = time.time()
-    files = ['./tmp/eimi_api.json', './tmp/igln_api.json', './tmp/iwda_api.json', './tmp/fx_usdpln_api.json', './tmp/fx_eurpln_api.json']
-    tasks = [read_json(file) for file in files]
+    requests_lst = create_requests_lst(c.ALPHA_REQ_TYPE, c.ALPHA_REQ_SYMBOLS)
+    tasks = []
+    for req in requests_lst:
+        tasks.append(get_data(req))
+    # for task in tasks:
+    #     print(task['Meta Data'])
+    # print(len(tasks))
+    # files = ['./tmp/eimi_api.json', './tmp/igln_api.json', './tmp/iwda_api.json', './tmp/fx_usdpln_api.json', './tmp/fx_eurpln_api.json']
+    # tasks = [read_json(file) for file in files]
     get_symbols(tasks)
     # TODO Uncomment download from bucket, and delete create_boilerplate...()
-    # download_from_bucket(c.ALPHA_MIN_MAX, c.MAIL_IDS_PATH, c.ALPHA_MIN_MAX)
-    create_boilerplate_min_max_file(c.ALPHA_SYMBOLS)
+    download_from_bucket(c.ALPHA_MIN_MAX, c.MAIL_IDS_PATH, c.ALPHA_MIN_MAX)
+    create_boilerplate_min_max_file(c.ALPHA_TICKER_SYMBOLS)
     # results = tasks
     
     min_max = read_min_max(c.ALPHA_MIN_MAX)
