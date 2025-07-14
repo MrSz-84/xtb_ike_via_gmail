@@ -21,22 +21,30 @@ NBP_BASE_REQ = 'https://api.nbp.pl/api/exchangerates/rates/'
 NBP_TMP_CSV = './tmp/nbp.csv'
 NBP_BUCKET_PATH = 'nbp-usdpln-exchange-rates'
 ALPHA_API = './config/alphavantage.json'
-ALPHA_BASE_REQ = 'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol='
+ALPHA_BASE_REQ = 'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY'
+ALPHA_EQ_SYMBOL_REQ = '&symbol='
 ALPHA_OUTPUT_SIZE = '&outputsize='
 ALPHA_OUTPUT_SIZE_TYPE = 'compact'
 ALPHA_APIKEY_REQ = '&apikey='
-ALPHA_FX_BASE_REQ = 'https://www.alphavantage.co/query?function=FX_DAILY&from_symbol='
-ALPHA_FROM_SYMBOL = 'USD'
-ALPHA_TO_SYMBOL = 'PLN'
+ALPHA_FX_BASE_REQ = 'https://www.alphavantage.co/query?function=FX_DAILY'
+ALPHA_FX_REQ_FROM_SYMBOL = '&from_symbol='
+ALPHA_FX_REQ_TO_SYMBOL = '&to_symbol='
 ALPHA_EQUITY_CSV = './tmp/equity.csv'
 ALPHA_FX_CSV = './tmp/fx.csv'
 ALPHA_MIN_MAX = './tmp/min_max.csv'
-ALPHA_SYMBOLS = []
+ALPHA_TICKER_SYMBOLS = []
 ALPHA_FX = 0
 ALPHA_EQ = 0
 ALPHA_FX_BUCKET = 'alphavantage-fx-exchange-rates'
 ALPHA_EQ_BUCKET = 'alphavantage-equit-quotes'
 ALPHA_MIN_MAX_BUCKET = 'alphavantage-min-max-dates'
+ALPHA_REQ_SYMBOLS = {
+    # 'EIMI.LON': 'equity',
+    # 'IWDA.LON': 'equity',
+    'IGLN.LON': 'equity',
+    'USDPLN': 'fx'
+    }
+ALPHA_REQ_TYPE = {'equity': ALPHA_BASE_REQ, 'fx': ALPHA_FX_BASE_REQ}
 MERGED_DFS_NAMES = [
     'Numer zlecenia',
     'Symbol',
