@@ -5,7 +5,7 @@ from config import consts as c
 # with open('./config/xtb-ike-wallet-0a604e129e1a.json', mode='r', encoding='utf-8') as f:
 #     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = './config/xtb-ike-wallet-0a604e129e1a.json'
 
-def validate_dates(dates):
+def validate_dates(dates: list[str]) -> list[str]:
     start = datetime.datetime.strptime(dates[0], '%Y-%m-%d')
     stop = datetime.datetime.strptime(dates[1], '%Y-%m-%d')
     if start <= stop:
@@ -13,7 +13,7 @@ def validate_dates(dates):
     else:
         return [stop.strftime('%Y-%m-%d'), start.strftime('%Y-%m-%d')]
 
-def argparse_logic():
+def argparse_logic() -> None:
     start = (datetime.date.today() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
     stop = (datetime.date.today() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
 
@@ -57,7 +57,7 @@ def argparse_logic():
     os.environ['NBP_START_DATE'] = args.dates[0]
     os.environ['NBP_END_DATE'] = args.dates[1]
 
-def create_requests_url(base_req, type='last'):
+def create_requests_url(base_req: str, type: str='last') -> tuple[str, str]:
     if type == 'last':
         start = (datetime.date.today() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
         stop = (datetime.date.today() - datetime.timedelta(days=1)).strftime('%Y-%m-%d')
@@ -73,7 +73,7 @@ def create_requests_url(base_req, type='last'):
         ask_bid = f'{base_req}{c.NBP_ASK_BID}/usd/{start}/{stop}/?format=json'.lower()
         return mid, ask_bid
 
-def get_data(pair):
+def get_data(pair: tuple[str, str]) -> list[dict[str, str|list[dict[str, str|float]]]]:
     temp_data = []
     count = 1
     for req in pair:
@@ -98,7 +98,7 @@ def get_data(pair):
             return [{'code': 'empty', 'rates': f'{r.status_code} {r.reason}'}, {'code': 'empty', 'rates': f'{r.status_code} {r.reason}'}]
     return temp_data
 
-def create_data_struct(input_data):
+def create_data_struct(input_data: list[dict[str, str|list[dict[str, str|float]]]]) -> list[dict[str, str|float]]:
     output_lst = []
     currency = input_data[0]['code']
     for items in zip(input_data[0]['rates'], input_data[1]['rates']):
@@ -111,7 +111,7 @@ def create_data_struct(input_data):
         output_lst.append(dct)
     return output_lst
 
-def create_csv(to_write):
+def create_csv(to_write: list[dict[str, str|float]]) -> None:
     header = 'date,currency,mid,ask,bid\n'
     with open(c.NBP_TMP_CSV, mode='w+') as f:
         f.write(header)
@@ -124,7 +124,7 @@ def create_csv(to_write):
             line += f'{entry['bid']}\n'
             f.write(line)
 
-def upload_to_bucket(fname, gsbucket, dest_fname):
+def upload_to_bucket(fname: str, gsbucket: str, dest_fname: str) -> None:
     dest_fname = dest_fname.replace('./tmp/','')
     client = storage.Client()
     bucket = client.bucket(gsbucket)
@@ -132,7 +132,7 @@ def upload_to_bucket(fname, gsbucket, dest_fname):
     blob.upload_from_filename(fname)
     print(f'✅ Upload of the file {fname} to {gsbucket} cloud storage bucket complete.')
 
-def main():
+def main() -> None:
     argparse_logic()
     req_pair = create_requests_url(base_req=c.NBP_BASE_REQ, type=os.environ['NBP_REQ_TYPE'])
     input_ = get_data(req_pair)
