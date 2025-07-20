@@ -39,8 +39,8 @@ ALPHA_FX_BUCKET = 'alphavantage-fx-exchange-rates'
 ALPHA_EQ_BUCKET = 'alphavantage-equit-quotes'
 ALPHA_MIN_MAX_BUCKET = 'alphavantage-min-max-dates'
 ALPHA_REQ_SYMBOLS = {
-    # 'EIMI.LON': 'equity',
-    # 'IWDA.LON': 'equity',
+    'EIMI.LON': 'equity',
+    'IWDA.LON': 'equity',
     'IGLN.LON': 'equity',
     'USDPLN': 'fx'
     }
