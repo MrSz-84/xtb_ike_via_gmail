@@ -1,4 +1,4 @@
-import requests, os, copy, datetime, argparse, json, time, asyncio, aiohttp
+import os, copy, argparse, json, asyncio, aiohttp
 from google.cloud import storage
 from config import consts as c
 
@@ -240,7 +240,7 @@ def upload_fx() -> None:
         upload_min_max()
 
 async def main() -> None:
-    start = time.time()
+    # start = time.time()
     argparse_logic()
     requests_lst = create_requests_lst(c.ALPHA_REQ_TYPE, c.ALPHA_REQ_SYMBOLS)
     async with aiohttp.ClientSession() as session:
@@ -251,12 +251,9 @@ async def main() -> None:
             print(f'❌ An error occured during API call: {e}')
             return
     
-    # exit()
-    
     # files = ['./tmp/eimi_api.json', './tmp/igln_api.json', './tmp/iwda_api.json', './tmp/fx_usdpln_api.json', './tmp/fx_eurpln_api.json']
     # tasks = [read_json(file) for file in files]
     get_symbols(responses)
-    # TODO Uncomment download from bucket, and delete create_boilerplate...()
     download_from_bucket(c.ALPHA_MIN_MAX, c.ALPHA_MIN_MAX_BUCKET, c.ALPHA_MIN_MAX)
     # create_boilerplate_min_max_file(c.ALPHA_TICKER_SYMBOLS)
     
@@ -277,8 +274,8 @@ async def main() -> None:
         upload_fx()
     upload_min_max()
     
-    stop = time.time()
-    print('Duration: ', stop - start)
+    # stop = time.time()
+    # print('Duration: ', stop - start)
     
     files_cleanup([c.ALPHA_EQUITY_CSV, c.ALPHA_FX_CSV, c.ALPHA_MIN_MAX])
     print('✅ All tasks done, finishing program...') 
