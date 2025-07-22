@@ -67,7 +67,7 @@ DATA_TYPES = {
     'Nazwa instrumentu': 'string',
     'System wykonania zlecenia': 'string',
     'Wolumen': 'Float64', 
-    'Data i czas transakcji': 'datetime64[s]',
+    'Data i czas transakcji': 'object',
     'Zlecenie otwarcia': 'string',
     'Cena jednostkowa': 'Float64',
     'Cena calkowita': 'Float64',
