@@ -17,7 +17,7 @@ from config import consts as c
 
 # with open('./config/docs.json', mode='r', encoding='utf-8') as f:
 #     os.environ['PDF_DECODE_KEY'] = f.read()
-    
+
 # with open('./config/xtb-ike-wallet-0a604e129e1a.json', mode='r', encoding='utf-8') as f:
 #     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = './config/xtb-ike-wallet-0a604e129e1a.json'
 
@@ -71,7 +71,7 @@ def create_data_struct(data_batch, read_emails, emails_dct):
             'subject': data_batch[4],
             'attachment': {'name': data_batch[5], 'file': data_batch[6]}
             }
-        
+    
 def replace_fractional(x):
     if 'ETF' in x:
         x = 'ETF'
@@ -83,6 +83,11 @@ def merge_name_type(dfs_lst):
     merged = pd.concat(dfs_lst)
     merged.columns = c.MERGED_DFS_NAMES
     merged = merged.astype(c.DATA_TYPES)
+    merged['Data i czas transakcji'] = pd.to_datetime(
+        merged['Data i czas transakcji'],
+        format='%d.%m.%Y %H:%M:%S',
+        errors='coerce'
+    )
     merged.reset_index(drop=True, inplace=True)
     return merged
 
