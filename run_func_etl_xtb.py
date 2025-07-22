@@ -1,4 +1,4 @@
-import functions_framework, datetime, traceback, logging
+import functions_framework, traceback, logging
 from google.cloud import bigquery
 from google.api_core import exceptions
 
@@ -8,7 +8,7 @@ def process_file(cloudevent):
     file = cloudevent.data['name']    
     bucket = cloudevent.data['bucket']
     time = cloudevent.data['timeCreated']
-    TABLE_ID_STR = 'xtb-ike-wallet.retirement_portfolio.xtb_transactions_import_'
+    TABLE_ID_STR = 'xtb-ike-wallet.retirement_portfolio.xtb_transactions_import'
     SCHEMA = [
         bigquery.SchemaField('NumerZlecenia', 'INTEGER', mode='REQUIRED'),
         bigquery.SchemaField('Symbol', 'STRING', mode='REQUIRED'),
@@ -27,25 +27,19 @@ def process_file(cloudevent):
         bigquery.SchemaField('LaczneKoszty', 'FLOAT', mode='REQUIRED'),
     ]
     
-    def table_id_dynamic_date(datetime_str, table):
-        try:
-            dt_obj = datetime.datetime.strptime(datetime_str, '%Y-%m-%dT%H:%M:%S.%fZ')
-        except ValueError:
-            return table + 'ERROR'
-        dt_obj = dt_obj.replace(tzinfo=datetime.timezone.utc)
-        import_date = dt_obj.strftime('%Y%m%d')
-        return table + import_date
-    
-    def create_table_if_not_exist(table_schema, table_prefix, time_str, filename, bucketname):
+    def create_table_if_not_exist(table_schema, table_prefix, filename, bucketname):
         client = bigquery.Client()
-        table_id = table_id_dynamic_date(time_str, table_prefix)
+        table_id = table_prefix
         table_ref = bigquery.Table(table_id, schema=table_schema)
+        table_ref.time_partitioning = bigquery.TimePartitioning(
+            type_=bigquery.TimePartitioningType.DAY,
+            field='DataCzas'
+        )
+        table_ref.clustering_fields = ['Symbol', 'Waluta']
         
         try:
             client.get_table(table_ref)
-            print(f'ℹ️ Table {table_id} exists - TRUNCATE')
-            query = f'TRUNCATE TABLE `{table_id}`'
-            client.query(query).result()
+            print(f'ℹ️ Table {table_id} exists')
         except exceptions.NotFound:
             print(f'ℹ️ Creating table {table_id}')
             client.create_table(table_ref)
@@ -56,7 +50,7 @@ def process_file(cloudevent):
             skip_leading_rows=1,
             autodetect=False,
             schema = table_schema,
-            write_disposition = bigquery.WriteDisposition.WRITE_TRUNCATE
+            write_disposition = bigquery.WriteDisposition.WRITE_APPEND
         )
         print(f'⬆️ Uploading {uri} to {table_id}')
         client.load_table_from_uri(uri, table_id, job_config=job_config).result()
@@ -64,7 +58,7 @@ def process_file(cloudevent):
     
     print(f"▶️ Start – {file} ({time})")
     try:    
-        create_table_if_not_exist(SCHEMA, TABLE_ID_STR, time, file, bucket)
+        create_table_if_not_exist(SCHEMA, TABLE_ID_STR, file, bucket)
         print("✅ Finished successfully")
     except Exception as e:
         logging.error("❌ Main error: %s\n%s", e, traceback.format_exc())
