@@ -20,7 +20,7 @@ def argparse_logic() -> None:
         '-os',
         '--outputsize',
         metavar='OS',
-        choices=['compact', 'full', 'dupa'],
+        choices=['compact', 'full'],
         default='compact',
         type=str,
         help='100 days vs 20+ years od data, choose compact :D'
