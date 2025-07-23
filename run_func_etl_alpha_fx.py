@@ -31,7 +31,7 @@ def process_file(cloudevent):
     
     uri = f'gs://{bucket}/{filename}'
     table_ref = bigquery.Table(TABLE_ID_STR, schema=SCHEMA)
-    table_ref.partitioning_type = bigquery.TimePartitioning(
+    table_ref.time_partitioning = bigquery.TimePartitioning(
         type_=bigquery.TimePartitioningType.DAY,
         field='date'
     )
