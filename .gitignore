@@ -6,3 +6,4 @@ config/docs.json
 config/token.json
 config/__pycache__
 venv
+.idea
