@@ -23,11 +23,11 @@ Version: **0.2.5**
 
 
 #### What is planned:
-~~1. Finding a free API with exchange rates for three financial instruments I currently invest into via XTB broker.~~ **DONE**
-~~2. ETL the data.~~ **DONE**
-~~3. Transport it into a base table in BQ.~~ **DONE**
-~~4. Create a schedule for gathering all above data into one table containing a timeline since the beginning of my invest to the day before present day (today - 1 day).~~ **DONE**
-~~5. Figuring out what and how do I need to calculate in order to seamless transition from BQ table to visualisation tools. Power Bi won't be a problem here, because it offers variety of advanced options to calculate things, but Looker Studio is a simpler tool, without advanced calculation tools, Thus most of the calculations needed are going to be done using SQL in BQ.~~ **DONE**
+1. ~~Finding a free API with exchange rates for three financial instruments I currently invest into via XTB broker.~~ **DONE**
+2. ~~ETL the data.~~ **DONE**
+3. ~~Transport it into a base table in BQ.~~ **DONE**
+4. ~~Create a schedule for gathering all above data into one table containing a timeline since the beginning of my invest to the day before present day (today - 1 day).~~ **DONE**
+5. ~~Figuring out what and how do I need to calculate in order to seamless transition from BQ table to visualisation tools. Power Bi won't be a problem here, because it offers variety of advanced options to calculate things, but Looker Studio is a simpler tool, without advanced calculation tools, Thus most of the calculations needed are going to be done using SQL in BQ.~~ **DONE**
 6. Find an automated source of inflation data for Polish economy.
 7. Find some data for benchmarks purposes of my portfolio. (WIG?, SWIG80?, S&P500?, MSCI WORLD?)
 8. Finding a way to gather data from other retirement accounts I have (PPK and Polish tresury bonds) and transport them into BQ.
