@@ -1,0 +1,16 @@
+main:
+  params: [input]
+  steps:
+    - init:
+        assign:
+          - project_id: ${sys.get_env("GOOGLE_CLOUD_PROJECT_ID")}
+          - job_name: ${input.jobName}
+          - job_location: ${input.jobLocation}
+    - run_job:
+        call: googleapis.run.v1.namespaces.jobs.run
+        args:
+          name: ${"namespaces/" + project_id + "/jobs/" + job_name}
+          location: ${job_location}
+        result: run_result
+    - finish:
+        return: ${run_result.status}
