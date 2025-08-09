@@ -200,4 +200,51 @@ The code used in Cloud Run (Services) Functions linked to Eventarc linked to the
 #### run_func_etl_alpha_fx.py
 The code used in Cloud Run (Services) Functions linked to Eventarc linked to the bucket in which Alphavantage FX exchange rates information lands (`alpha_api_call_fx.py`). It transports data from file into BigQuery `alpha_fx_data` table.
 
+<br>
 
+#### **PIPELINE PROCESS DIAGRAM**
+<br>
+
+```mermaid
+---
+  title: SINGLE SUBPROCESS DIAGRAM
+---
+flowchart TD
+    ST(["CLOUD SCHEDULER"])         --> WF[["`WORKFLOW INVOCATION`"]]
+    WF[["`WORKFLOW INVOCATION`"]]   --> PS[["`CLOUD RUN JOB`"]]
+    PS[["`CLOUD RUN JOB`"]]         --> FAILED>"`FAILED`"] 
+    FAILED>"`FAILED`"]              --> QUIT("`STOP`") 
+    PS[["`CLOUD RUN JOB`"]]         --> CS>"`ETL`"] 
+    CS>"`ETL`"]                     --> FI["`FILE IN CLOUD STORAGE`"]
+    FI["`FILE IN CLOUD STORAGE`"]   --> EA[["`EVENT ARC`"]] 
+    EA[["`EVENT ARC`"]]             --> CF[["`CLOUD FUNCTIONS`"]]
+    CF[["`CLOUD FUNCTIONS`"]]       --> FAILED2>"`FAILED`"]
+    FAILED2>"`FAILED`"]             --> QUIT2("`STOP`") 
+    CF[["`CLOUD FUNCTIONS`"]]       --> BQ[("`BQ TABLE`")] 
+    BQ[("`BQ TABLE`")]              --> SQ[["`SCHEDULED QUERY`"]] 
+    SQ[["`SCHEDULED QUERY`"]]       --> FT[("`FINAL BQ TABLE`")]
+```
+
+<br>
+WHOLE PIPELINE HIGH OVERVIEW
+<br>
+
+```mermaid
+---
+  title: WHOLE PIPELINE DIAGRAM
+---
+
+flowchart TD
+    ST(["CLOUD SCHEDULER GMAIL"]) --> WF[["WORKFLOWS"]]
+    ST2(["CLOUD SCHEDULER NBP"]) --> WF[["WORKFLOWS"]]
+    ST3(["CLOUD SCHEDULER ALPHA"]) --> WF[["WORKFLOWS"]]
+    WF  --> PS[["CLOUD RUN JOBS"]]
+    PS  --> ETL
+    ETL --> FI["CLOUD STORAGE BUCKETS"]
+    FI  --> GMAIL & NBP & EQUITY & FX
+    GMAIL & NBP & EQUITY & FX --> EA[["EVENT ARC"]]
+    EA --> CF[["CLOUD FUNCTIONS"]]
+    CF --> BQ[("BQ PURCHASES")] & BQ2[("BQ NBP")] & BQ3[("BQ EQUITY")] & BQ4[("BQ FX")]
+    BQ & BQ2 & BQ3 & BQ4--> SQ[["SCHEDULED QUERY"]]
+    SQ --> FT[("FINAL TABLE PRE VISUAL ANALYSIS")]
+```
