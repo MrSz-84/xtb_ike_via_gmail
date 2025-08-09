@@ -195,10 +195,19 @@ The code used in Cloud Run (Services) Functions linked to Eventarc linked to the
 The code used in Cloud Run (Services) Functions linked to Eventarc linked to the bucket in which XTB equity purchases information lands (`main.py`). It transports data from file into BigQuery `xtb_transactions_import` table.
 
 #### run_func_etl_alpha_equity.py
-The code used in Cloud Run (Services) Functions linked to Eventarc linked to the bucket in which Alphavantage equity quotation rates information lands (`alpha_api_call_etfs.py`). It transports data from file into BigQuery `alpha_equity_data` table.
+The code used in Cloud Run (Services) Functions linked to Eventarc linked to the bucket in which Alpha Vantage equity quotation rates information lands (`alpha_api_call_etfs.py`). It transports data from file into BigQuery `alpha_equity_data` table.
 
 #### run_func_etl_alpha_fx.py
-The code used in Cloud Run (Services) Functions linked to Eventarc linked to the bucket in which Alphavantage FX exchange rates information lands (`alpha_api_call_fx.py`). It transports data from file into BigQuery `alpha_fx_data` table.
+The code used in Cloud Run (Services) Functions linked to Eventarc linked to the bucket in which Alpha Vantage FX exchange rates information lands (`alpha_api_call_fx.py`). It transports data from file into BigQuery `alpha_fx_data` table.
+
+#### get_data_from_alphavantage_equity_and_fx.yaml
+The code used in Workflows, linked to Cloud Scheduler to invoke Cloud Run Job responsible for ETL data from Alpha Vantage API. It transforms data into the csv files uploaded to Cloud Storage.
+
+#### get_data_from_gmail_job_invocation.yaml
+The code used in Workflows, linked to Cloud Scheduler to invoke Cloud Run Job responsible for ETL data from Gmail. It read PDF files from my broker and transforms them into a csv file. It transports data into Cloud Storage.
+
+#### get_data_from_nbp_exchange_rates_job_invocation.yaml
+The code used in Workflows, linked to Cloud Scheduler to invoke Cloud Run Job responsible for ETL data from NBP API. It transforms data into the csv file uploaded to Cloud Storage.
 
 <br>
 
