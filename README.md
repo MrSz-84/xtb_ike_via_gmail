@@ -7,12 +7,12 @@ Video overview: [NOT AVAILABLE YET]()
 
 GitHub repo: [repository](https://github.com/MrSz-84/xtb_ike_via_gmail)
 
-Version: **0.2.5**
+Version: **0.2.6**
 
 <br>
 
 ## _DISCLAIMER_ :
-#### This project is under construction, and currently focusing on ways of automation, and gathering data from various sources. As of ~~2025-07-06~~ 2025-08-04 it is capable of:
+#### This project is under construction, and currently focusing on ways of automation, and gathering data from various sources. As of ~~2025-07-06~~ 2025-09-14 it is capable of:
 1. Gathering purchases data from my gmail account.
 2. ETL the data gathered from emails, read pdf's transform them into dataframes, load to cloud storage, and from there to BigQuery table.
 3. Calling NBP's (Narodowy Bank Polski or Polish National Bank) API for USD PLN currency exchange rates of mid, ask and bid (average, sell and buy rates). 
@@ -75,7 +75,7 @@ The data is being transferred into SQL tables as mentioned below. In compliance 
 
 #### <u>alpha_equity_data</u>
 
-The `alpha_fx_data` table contains the data about the daily quotation rates for assets bought via broker and stored in `xtb_transactions_import`. This table contains such numerical columns as: **open**, **high**, **low**, **close**, **volume**, and a symbol of quoted asset ( at the time of writing this text only three tickers are placed here: IWDA.UK, EIMI.UD, IGLN.UK), by working days. Each row must have entries in all columns, therefor `REQUIRED` constraints were added. Columns included in this table are:
+The `alpha_fx_data` table contains the data about the daily quotation rates for assets bought via broker and stored in `xtb_transactions_import`. This table contains such numerical columns as: **open**, **high**, **low**, **close**, **volume**, and a symbol of quoted asset ( at the time of writing this text only three tickers are placed here: IWDA.UK, EIMI.UD, IGLN.UK ), by working days. Each row must have entries in all columns, therefor `REQUIRED` constraints were added. Columns included in this table are:
 
 - `date` unique for given symbol. Formated as `DATE` in ISO 8601 format. 
 - `open` which is the price at which the first transactions took place that day. This column is of `FLOAT` format.
@@ -133,7 +133,7 @@ The `xtb_transactions_import` table, contains information about every transactio
 
 #### <u>retirement_portfolio</u>
 
-The `retirement_portfolio` table, contains transformed data about the state of every symbol (asset) by daily granularity. This is the go-to table powering dashboard in Looker Studio, (PowerBi version coming soon). Here all calculated, via an SQL query, values land. Columns included in this table are:
+The `retirement_portfolio` table, contains transformed data about the state of every symbol (asset) by daily granularity. This is the go-to table powering dashboard in Looker Studio [click](https://lookerstudio.google.com/s/qYSiM9ZzZ60), and PowerBi version here [click](https://www.novypro.com/project/retirement-portfolio-analysis-tool). Here all calculated, via an SQL query, values land. Columns included in this table are:
 
 - `date` which represent the date since first transaction (portfolio creation date 2025-05-23) in ISO format, thus `DATETIME` was used as type.
 - `symbol` which represents the equity bought as a ticker. In future also Polish bonds will be represented here, as a main type such as TOS or EDO. This column is of `STRING` type.
