@@ -7,3 +7,5 @@ config/token.json
 config/__pycache__
 venv
 .idea
+.dockerignore
+README TEMPLATE.md

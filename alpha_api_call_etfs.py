@@ -2,10 +2,10 @@ import os, copy, argparse, json, asyncio, aiohttp
 from google.cloud import storage
 from config import consts as c
 
-with open('./config/xtb-ike-wallet-0a604e129e1a.json', mode='r', encoding='utf-8') as f:
-    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = './config/xtb-ike-wallet-0a604e129e1a.json'
-with open(c.ALPHA_API, mode='r', encoding='utf-8') as f:
-    os.environ['ALPHA_API_KEY'] = json.load(f).strip('"')
+# with open('./config/xtb-ike-wallet-0a604e129e1a.json', mode='r', encoding='utf-8') as f:
+#     os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = './config/xtb-ike-wallet-0a604e129e1a.json'
+# with open(c.ALPHA_API, mode='r', encoding='utf-8') as f:
+#     os.environ['ALPHA_API_KEY'] = json.load(f).strip('"')
 # os.environ['OUTPUT_SIZE_TYPE'] = c.ALPHA_OUTPUT_SIZE_TYPE
 
 
